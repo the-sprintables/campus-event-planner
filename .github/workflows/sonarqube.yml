@@ -1,0 +1,73 @@
+ name: SonarQube Scan
+
+ on:
+   push:
+     branches: [ "main", "development" ]
+   pull_request:
+     branches: [ "main", "development" ]
+
+ jobs:
+   sonar:
+     name: Analyze with SonarQube
+     runs-on: ubuntu-latest
+     steps:
+       - name: Checkout
+         uses: actions/checkout@v4
+
+       - name: Setup Node.js
+         uses: actions/setup-node@v4
+         with:
+           node-version: '20'
+
+       - name: Setup Go
+         uses: actions/setup-go@v5
+         with:
+           go-version: '1.22'
+
+       - name: Install frontend dependencies
+         working-directory: frontend
+         run: |
+           if [ -f package.json ]; then
+             npm ci
+           fi
+
+       - name: Build frontend (optional)
+         working-directory: frontend
+         run: |
+           if [ -f package.json ]; then
+             npm run -s build || true
+           fi
+
+       - name: Run frontend tests with coverage (optional)
+         working-directory: frontend
+         run: |
+           if [ -f package.json ]; then
+             npm run -s test -- --coverage || true
+           fi
+
+       - name: Run Go tests with coverage (optional)
+         working-directory: backend
+         run: |
+           if [ -f go.mod ]; then
+             go test ./... -coverprofile=coverage.out || true
+           fi
+
+       - name: SonarQube Scan
+         uses: sonarsource/sonarqube-scan-action@v2
+         env:
+          #  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          #  SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: "921c3532b4b78db1fa8511a918b3bfe6619272dc"
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >-
+            -Dsonar.projectBaseDir=.
+            -Dsonar.projectKey=the-sprintables_campus-event-planner
+            -Dsonar.organization=the-sprintables
+
+       - name: Quality Gate
+         uses: sonarsource/sonarqube-quality-gate-action@v1.1.0
+         env:
+          #  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_TOKEN: "921c3532b4b78db1fa8511a918b3bfe6619272dc"
+
