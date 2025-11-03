@@ -1,71 +1,38 @@
- name: SonarQube Scan
+name: SonarQube Scan
 
- on:
-   push:
-     branches: [ "main", "development" ]
-   pull_request:
-     branches: [ "main", "development" ]
+on:
+  push:
+    branches: [ main , development ]
+  pull_request:
 
- jobs:
-   sonar:
-     name: Analyze with SonarQube
-     runs-on: ubuntu-latest
-     steps:
-       - name: Checkout
-         uses: actions/checkout@v4
+jobs:
+  sonar:
+    runs-on: ubuntu-latest
 
-       - name: Setup Node.js
-         uses: actions/setup-node@v4
-         with:
-           node-version: '20'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-       - name: Setup Go
-         uses: actions/setup-go@v5
-         with:
-           go-version: '1.22'
-
-       - name: Install frontend dependencies
-         working-directory: frontend
-         run: |
-           if [ -f package.json ]; then
-             npm ci
-           fi
-
-       - name: Build frontend (optional)
-         working-directory: frontend
-         run: |
-           if [ -f package.json ]; then
-             npm run -s build || true
-           fi
-
-       - name: Run frontend tests with coverage (optional)
-         working-directory: frontend
-         run: |
-           if [ -f package.json ]; then
-             npm run -s test -- --coverage || true
-           fi
-
-       - name: Run Go tests with coverage (optional)
-         working-directory: backend
-         run: |
-           if [ -f go.mod ]; then
-             go test ./... -coverprofile=coverage.out || true
-           fi
-
-       - name: SonarQube Scan
-         uses: sonarsource/sonarqube-scan-action@v2
-         env:
-           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          #  SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
-          args: >-
-            -Dsonar.projectBaseDir=.
-            -Dsonar.projectKey=the-sprintables_campus-event-planner
-            -Dsonar.organization=the-sprintables
+          distribution: 'temurin'
+          java-version: '17'
 
-       - name: Quality Gate
-         uses: sonarsource/sonarqube-quality-gate-action@v1.1.0
-         env:
-           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: Install Sonar Scanner
+        run: |
+          npm install -g sonarqube-scanner
+
+      - name: Run Sonar Scan
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          BRANCH=${BRANCH_NAME:-"development"}  # fallback if ref_name is empty (like in act)
+          echo "Running Sonar scan on branch: $BRANCH"
+          sonar \
+            -Dsonar.token=$SONAR_TOKEN \
+            -Dsonar.projectKey=the-sprintables_campus-event-planner \
+            -Dsonar.organization=the-sprintables \
+            -Dsonar.branch.name=$BRANCH
 

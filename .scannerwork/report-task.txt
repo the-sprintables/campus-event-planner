@@ -1,7 +1,0 @@
-organization=the-sprintables
-projectKey=the-sprintables_campus-event-planner
-serverUrl=https://sonarcloud.io
-serverVersion=8.0.0.69406
-dashboardUrl=https://sonarcloud.io/dashboard?id=the-sprintables_campus-event-planner
-ceTaskId=AZpKecGdMsLZ7Tzx7cie
-ceTaskUrl=https://sonarcloud.io/api/ce/task?id=AZpKecGdMsLZ7Tzx7cie
