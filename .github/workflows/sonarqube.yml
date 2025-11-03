@@ -1,17 +1,18 @@
-name: SonarQube Scan
+name: SonarCloud PR Analysis
 
 on:
-  push:
-    branches: [ main , development ]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
-  sonar:
+  sonarcloud:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history required for PR analysis
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -19,20 +20,12 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Install Sonar Scanner
-        run: |
-          npm install -g sonarqube-scanner
-
-      - name: Run Sonar Scan
+      - name: SonarCloud Scan
+        uses: sonarsource/sonarcloud-github-action@v2
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # required for PR decoration
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          BRANCH_NAME: ${{ github.ref_name }}
-        run: |
-          BRANCH=${BRANCH_NAME:-"development"}  # fallback if ref_name is empty (like in act)
-          echo "Running Sonar scan on branch: $BRANCH"
-          sonar \
-            -Dsonar.token=$SONAR_TOKEN \
-            -Dsonar.projectKey=the-sprintables_campus-event-planner \
-            -Dsonar.organization=the-sprintables \
-            -Dsonar.branch.name=$BRANCH
-
+        with:
+          args: >
+            -Dsonar.projectKey=the-sprintables_campus-event-planner
+            -Dsonar.organization=the-sprintables
