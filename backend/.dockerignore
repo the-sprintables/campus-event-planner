@@ -1,0 +1,10 @@
+event-planner-server
+*.db
+*.sqlite
+.git
+.gitignore
+README.md
+.env
+.env.local
+api-test/
+
