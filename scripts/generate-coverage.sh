@@ -13,7 +13,7 @@ cd "$BACKEND_DIR"
 echo "Running tests and generating coverage..."
 echo "Backend directory: $BACKEND_DIR"
 
-go test ./tests/routes/... \
+go test ./routes/... \
   -coverprofile=coverage.out \
   -coverpkg=./routes,./models,./db,./utils,./middlewares \
   -covermode=atomic \

@@ -29,7 +29,7 @@ jobs:
       - name: Generate Go test coverage
         working-directory: ./backend
         run: |
-          go test ./tests/routes/... -coverprofile=coverage.out -coverpkg=./routes,./models,./db,./utils,./middlewares -covermode=atomic
+          go test ./routes/... -coverprofile=coverage.out -coverpkg=./routes,./models,./db,./utils,./middlewares -covermode=atomic
 
       - name: SonarCloud Scan
         uses: sonarsource/sonarcloud-github-action@v2
