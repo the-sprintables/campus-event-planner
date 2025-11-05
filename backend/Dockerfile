@@ -3,8 +3,8 @@ FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
-# Install build dependencies
-RUN apk add --no-cache git
+# Install build dependencies for CGO (required for SQLite)
+RUN apk add --no-cache git gcc musl-dev sqlite-dev pkgconfig
 
 # Copy go mod files
 COPY go.mod go.sum ./
@@ -20,14 +20,20 @@ COPY middlewares/ ./middlewares/
 COPY utils/ ./utils/
 COPY db/ ./db/
 
+# Verify CGO environment and dependencies
+RUN echo "CGO_ENABLED=$(go env CGO_ENABLED)" && \
+    gcc --version && \
+    pkg-config --exists sqlite3 && echo "SQLite3 found" || echo "SQLite3 not found via pkg-config"
+
 # Build the application
-RUN CGO_ENABLED=1 go build -o event-planner-server ./main.go
+# Use -v flag for verbose output to see build errors
+RUN CGO_ENABLED=1 go build -v -o event-planner-server ./main.go
 
 # Production stage
 FROM alpine:latest
 
-# Install runtime dependencies
-RUN apk --no-cache add ca-certificates sqlite
+# Install runtime dependencies (SQLite libraries for CGO binary)
+RUN apk --no-cache add ca-certificates sqlite-libs
 
 # Create a non-root user
 RUN addgroup -g 1000 appuser && \
