@@ -9,8 +9,11 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci
 
-# Copy source code
-COPY . .
+# Copy source code (only necessary files, excluding sensitive data)
+COPY src/ ./src/
+COPY index.html ./
+COPY tsconfig.json ./
+COPY vite.config.ts ./
 
 # Build the application
 RUN npm run build
