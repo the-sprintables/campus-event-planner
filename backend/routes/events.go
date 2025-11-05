@@ -37,7 +37,7 @@ func checkEventAuthorization(context *gin.Context, event *models.Event, userId i
 	return true
 }
 
-func getEvents(context *gin.Context) {
+func GetEvents(context *gin.Context) {
 	events, err := models.GetAllEvents()
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"message": "Could not retrieve events"})
@@ -46,7 +46,7 @@ func getEvents(context *gin.Context) {
 	context.JSON(http.StatusOK, events)
 }
 
-func createEvent(context *gin.Context) {
+func CreateEvent(context *gin.Context) {
 	var event models.Event
 	err := context.ShouldBindJSON(&event)
 	if err != nil {
@@ -66,7 +66,7 @@ func createEvent(context *gin.Context) {
 	context.JSON(http.StatusCreated, gin.H{"message": "Event created successfully", "event": event})
 }
 
-func getEvent(context *gin.Context) {
+func GetEvent(context *gin.Context) {
 	eventId, ok := parseEventID(context)
 	if !ok {
 		return
@@ -80,7 +80,7 @@ func getEvent(context *gin.Context) {
 	context.JSON(http.StatusOK, event)
 }
 
-func updateEvent(context *gin.Context) {
+func UpdateEvent(context *gin.Context) {
 	eventId, ok := parseEventID(context)
 	if !ok {
 		return
@@ -113,7 +113,7 @@ func updateEvent(context *gin.Context) {
 	context.JSON(http.StatusOK, gin.H{"message": "Event updated successfully"})
 }
 
-func deleteEvent(context *gin.Context) {
+func DeleteEvent(context *gin.Context) {
 	eventId, ok := parseEventID(context)
 	if !ok {
 		return
