@@ -1,0 +1,144 @@
+/* Modern, classy styles */
+:root{
+	--bg: #f4f6fb;
+	--card: #ffffff;
+	--muted: #6b7280;
+	--accent: #2563eb;
+	--accent-600: #1e40af;
+	--glass: rgba(255,255,255,0.6);
+	--radius: 12px;
+}
+
+*{box-sizing:border-box}
+html,body,#root{height:100%}
+body{
+	margin:0;
+	font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+	background: linear-gradient(180deg,#f7f9ff 0%, var(--bg) 100%);
+	color:#0f172a;
+	-webkit-font-smoothing:antialiased;
+}
+
+.app{min-height:100vh;display:flex;flex-direction:column}
+.app header{
+	display:flex;align-items:center;justify-content:space-between;
+	padding:1.25rem 2rem;background:linear-gradient(90deg,var(--accent),var(--accent-600));
+	color: #fff;border-bottom-left-radius:16px;border-bottom-right-radius:16px;box-shadow:0 6px 20px rgba(37,99,235,0.12);
+}
+.app header h1{margin:0;font-size:1.25rem;letter-spacing:0.2px}
+.app header nav{display:flex;gap:0.75rem;align-items:center}
+.app header nav a{color:rgba(255,255,255,0.92);text-decoration:none;padding:0.4rem 0.65rem;border-radius:8px;font-weight:600;font-size:0.95rem}
+.app header nav a:hover{background:rgba(255,255,255,0.06)}
+.app header nav .welcome{color:rgba(255,255,255,0.9);margin-right:0.5rem}
+.app header nav button{background:rgba(255,255,255,0.12);border:none;color:#fff;padding:0.4rem 0.6rem;border-radius:8px;cursor:pointer}
+.app header nav button:hover{background:rgba(255,255,255,0.18)}
+
+.container{width:100%;max-width:1100px;margin:1.5rem auto;padding:0 1rem;display:flex;gap:1.25rem}
+.left{flex:1}
+.right{width:340px}
+
+.card{background:var(--card);padding:1.15rem;border-radius:var(--radius);box-shadow:0 8px 30px rgba(15,23,42,0.06);border:1px solid rgba(15,23,42,0.03)}
+
+/* Forms */
+.auth-page{display:flex;justify-content:center;padding:2rem}
+.auth-form{width:100%;max-width:420px}
+.auth-form label{display:block;margin-bottom:0.6rem;color:var(--muted);font-weight:600}
+.auth-form input{width:100%;padding:0.85rem;border-radius:10px;border:1px solid #e6eef8;background:linear-gradient(180deg,#ffffff,#fbfdff);margin-bottom:1rem}
+.auth-form .error{color:#b91c1c;margin-bottom:0.75rem}
+.auth-form button{background:var(--accent);color:#fff;border:none;padding:0.75rem 1rem;border-radius:10px;font-weight:700;cursor:pointer}
+.auth-form button:hover{background:var(--accent-600)}
+
+/* Centered login card/title/button */
+.auth-card{display:flex;flex-direction:column;align-items:center;padding:2rem;max-width:480px;margin:1rem auto}
+.auth-title{margin:0 0 1rem 0;text-align:center;font-size:1.5rem}
+.auth-actions{width:100%;display:flex;justify-content:center;margin-top:0.75rem}
+.auth-actions .btn{min-width:140px}
+
+/* Event form and list */
+.event-form{margin-bottom:1rem}
+.event-form h2{margin:0 0 0.75rem 0}
+.event-form label{display:block;color:var(--muted);font-weight:600;margin-bottom:0.4rem}
+.event-form input,.event-form textarea,.event-form select{width:100%;padding:0.6rem;border-radius:8px;border:1px solid #eef4ff;margin-bottom:0.75rem}
+.event-form input[type="color"]{padding:0.3rem;height:42px}
+.event-form select{background-color:white}
+.form-actions{display:flex;justify-content:flex-end}
+.btn{display:inline-block;padding:0.5rem 0.85rem;border-radius:8px;border:none;background:var(--accent);color:#fff;font-weight:700;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid rgba(37,99,235,0.12)}
+
+.event-list{list-style:none;padding:0;margin:0}
+.event-item{display:flex;gap:12px;align-items:center;padding:0.85rem;border-radius:10px;margin-bottom:0.6rem;border:1px solid rgba(15,23,42,0.03);transition:transform .12s ease,box-shadow .12s ease}
+.event-item:hover{transform:translateY(-3px);box-shadow:0 8px 30px rgba(15,23,42,0.06)}
+.event-item .title{font-weight:700}
+.event-item .meta{font-size:0.85rem;color:var(--muted)}
+.event-item .actions{margin-left:auto;display:flex;gap:0.5rem}
+.empty{padding:1rem;border-radius:10px;color:var(--muted);background:linear-gradient(180deg,#ffffff,#fbfdff);border:1px solid rgba(15,23,42,0.03)}
+
+/* Confirm dialog */
+.confirm-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.45);display:flex;align-items:center;justify-content:center;z-index:60}
+.confirm-card{max-width:440px;padding:1.25rem;border-radius:12px;text-align:left}
+
+/* Home page specific styles */
+.home{padding:1.25rem}
+.home .left{display:flex;flex-direction:column;gap:1rem}
+.hero{background:linear-gradient(135deg,#eef6ff, #ffffff);padding:1.25rem;border-radius:12px;border:1px solid rgba(15,23,42,0.03);display:flex;align-items:center;gap:16px}
+.hero h2{margin:0;font-size:1.25rem}
+.grid-events{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.event-card{
+  padding:1.5rem;
+  border-radius:12px;
+  background:linear-gradient(180deg,#fff,#fbfdff);
+  box-shadow:0 8px 30px rgba(15,23,42,0.08);
+  border:1px solid rgba(15,23,42,0.03);
+  transition: transform 0.2s ease;
+}
+.event-card:hover {
+  transform: translateY(-4px);
+}
+.event-card .title {
+  font-size: 1.25rem;
+  margin: 0.75rem 0;
+}
+
+/* Modal styles for event pop */
+.modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.55);display:flex;align-items:center;justify-content:center;z-index:80}
+.modal-card{width:90%;max-width:900px;background:var(--card);padding:1rem;border-radius:12px;box-shadow:0 20px 60px rgba(2,6,23,0.4);border:1px solid rgba(15,23,42,0.06)}
+.modal-card .details img{height:400px}
+.event-card .meta{color:var(--muted);font-size:0.85rem;margin-top:6px}
+
+/* Card visuals to mimic the attached design */
+.event-card .media{
+  height:200px;
+  border-radius:8px;
+  background-size:cover;
+  background-position:center;
+  margin-bottom:0.6rem;
+  transition: transform 0.2s ease;
+}
+.event-card .media:hover {
+  transform: scale(1.02);
+}
+.badge{display:inline-block;background:rgba(245,243,255,0.9);color:#6b2b91;padding:0.35rem 0.6rem;border-radius:999px;font-weight:700;font-size:0.8rem;margin-bottom:0.6rem}
+.event-card .title{font-size:1.05rem;margin-top:0.25rem}
+.event-card .price{margin-top:0.9rem;font-weight:700;color:#111827}
+
+/* Grid layout for the main view */
+.view-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(390px,1fr));gap:24px}
+
+/* Manage page layout */
+.manage-events{display:flex;gap:18px;padding:1rem}
+.manage-left{flex:1}
+.manage-right{flex:2}
+.manage-right h2{margin-top:0}
+
+@media (max-width:900px){
+	.manage-events{flex-direction:column}
+}
+
+/* Details panel */
+.details h3{margin-top:0}
+
+/* Responsive */
+@media (max-width:900px){
+	.container{flex-direction:column;padding:0 1rem}
+	.right{width:100%}
+}

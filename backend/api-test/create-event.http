@@ -1,0 +1,10 @@
+POST http://localhost:8080/events
+Content-Type: application/json
+Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3QxQHN1bm1haWwuY29tIiwiZXhwIjoxNzYxNDE0NDExLCJ1c2VySWQiOjF9.26_3mpe8NFUZwkfiCGPhIqxNf_gwAPbJ0hI1lkqnHSM
+
+{
+  "name": "Test Event1 1111",
+  "description": "Test event.",
+  "location": "Conference Room A",
+  "dateTime": "2024-07-15T10:00:00Z"
+}
