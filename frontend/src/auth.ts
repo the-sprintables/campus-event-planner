@@ -7,7 +7,7 @@ export type User = {
 
 const API_BASE = 'http://localhost:8080'
 
-// ✅ REGISTER NEW USER
+//REGISTER NEW USER
 export async function register(user: User) {
   try {
     const res = await fetch(`${API_BASE}/signup`, {
@@ -28,7 +28,7 @@ export async function register(user: User) {
   }
 }
 
-// ✅ LOGIN USER
+// LOGIN USER
 export async function login(email: string, password: string, role?: 'admin' | 'user') {
   try {
     const res = await fetch(`${API_BASE}/login`, {
@@ -44,7 +44,6 @@ export async function login(email: string, password: string, role?: 'admin' | 'u
 
     const data = await res.json()
 
-    // You can store the JWT token in memory or cookie, not in local/session storage
     document.cookie = `token=${data.token}; path=/; max-age=${60 * 60 * 24}`
 
     return { ok: true }
@@ -54,24 +53,20 @@ export async function login(email: string, password: string, role?: 'admin' | 'u
   }
 }
 
-// update password
 
-
-// ✅ LOGOUT USER
+// LOGOUT USER
 export function logout() {
   document.cookie = 'token=; Max-Age=0; path=/;'
 }
 
-// ✅ GET CURRENT USER (OPTIONAL MOCK)
+// GET CURRENT USER
 export function currentUser(): User | null {
-  // In real-world apps, you'd verify JWT or fetch profile from backend.
-  // For now, we can just decode from cookie if needed.
   const match = document.cookie.match(/(^| )token=([^;]+)/)
   if (!match) return null
   return { email: 'current_user@example.com', role: 'user' } // placeholder
 }
 
-// ✅ UPDATE PASSWORD (NEW FUNCTION)
+// UPDATE PASSWORD
 export async function updatePassword(email: string, newPassword: string) {
   try {
     const res = await fetch(`${API_BASE}/update-password`, {
@@ -97,7 +92,7 @@ export async function updatePassword(email: string, newPassword: string) {
 
 
 
-// Uchi's code
+// For future uses
 // // Simple localStorage backed auth helpers with role support
 
 // type User = {

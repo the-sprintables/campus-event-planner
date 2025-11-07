@@ -68,7 +68,7 @@ export default function Login() {
 
 
 
-// uchi's code
+// For future uses
 
 // import React, { useState } from 'react'
 // import { useNavigate } from 'react-router-dom'
