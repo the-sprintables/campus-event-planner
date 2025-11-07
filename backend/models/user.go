@@ -61,3 +61,21 @@ func (u *User) ValidateCredentials() error {
 
 	return nil
 }
+
+func UpdatePassword(email string, newPassword string) error {
+	query := "UPDATE users SET password = ? WHERE email = ?"
+
+	hashedPassword, err := utils.HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+
+	stmt, err := db.DB.Prepare(query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(hashedPassword, email)
+	return err
+}
