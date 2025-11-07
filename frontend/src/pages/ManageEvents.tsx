@@ -15,7 +15,6 @@ export default function ManageEventsPage({ initialEvents, onCreate, onDelete, on
   }
 
   function handleUpdate(e: Event) {
-    // preserve owner
     e.ownerEmail = editing?.ownerEmail || user?.email
     if (onUpdate) onUpdate(e)
     setEditing(null)
