@@ -2,6 +2,7 @@
 Agile, Build &amp; Delivery Group Project
 
 ## SonarQube
+## Testing
 
 This repository is configured for SonarQube analysis for both the Go backend and the React TypeScript frontend.
 
