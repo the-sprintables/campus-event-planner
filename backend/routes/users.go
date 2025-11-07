@@ -52,3 +52,23 @@ func login(context *gin.Context) {
 
 	context.JSON(http.StatusOK, gin.H{"message": "Login successful", "token": token})
 }
+
+func updatePassword(context *gin.Context) {
+	var req struct {
+		Email       string `json:"email"`
+		NewPassword string `json:"newPassword"`
+	}
+
+	if err := context.ShouldBindJSON(&req); err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request data"})
+		return
+	}
+
+	err := models.UpdatePassword(req.Email, req.NewPassword)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to update password"})
+		return
+	}
+
+	context.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
+}
