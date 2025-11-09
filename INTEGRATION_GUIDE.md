@@ -34,27 +34,27 @@ Open your browser to: `http://localhost:5173`
 ### Common Issues:
 
 1. **Backend server is not running**
-   - ✅ **Solution**: Make sure the backend is running on port 8080
+   - **Solution**: Make sure the backend is running on port 8080
    - Check: Open `http://localhost:8080/events` in your browser - you should get a JSON response (even if empty array)
 
 2. **Backend server crashed**
-   - ✅ **Solution**: Check the backend terminal for error messages
+   - **Solution**: Check the backend terminal for error messages
    - Common causes:
      - Database file permissions issue
      - Port 8080 already in use
      - Missing dependencies
 
 3. **Port conflict**
-   - ✅ **Solution**: If port 8080 is in use, you can:
+   - **Solution**: If port 8080 is in use, you can:
      - Change backend port in `backend/main.go` (line 28)
      - Update frontend API URL in `frontend/src/api.ts` (line 4) or use environment variable
 
 4. **CORS issues**
-   - ✅ **Solution**: Backend CORS is already configured for `http://localhost:5173`
+   - **Solution**: Backend CORS is already configured for `http://localhost:5173`
    - If using a different port, update `backend/main.go` (line 18)
 
 5. **Database initialization error**
-   - ✅ **Solution**: Make sure the `backend` directory has write permissions
+   - **Solution**: Make sure the `backend` directory has write permissions
    - The backend creates `api.db` SQLite file in the `backend` directory
 
 ### Verify Backend is Running
