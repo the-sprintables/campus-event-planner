@@ -21,6 +21,62 @@ type Event struct {
 
 var events = []Event{}
 
+// parseDateTime parses a SQLite datetime string to time.Time
+// SQLite stores datetime as TEXT, so we try multiple formats
+func parseDateTime(dateTimeStr sql.NullString) time.Time {
+	if !dateTimeStr.Valid {
+		return time.Now()
+	}
+
+	dtStr := dateTimeStr.String
+	// Try parsing with timezone offset (handles both + and -)
+	if t, err := time.Parse("2006-01-02 15:04:05-07:00", dtStr); err == nil {
+		return t
+	}
+	if t, err := time.Parse("2006-01-02 15:04:05+07:00", dtStr); err == nil {
+		return t
+	}
+	if t, err := time.Parse(time.RFC3339, dtStr); err == nil {
+		return t
+	}
+	if t, err := time.Parse("2006-01-02T15:04:05Z", dtStr); err == nil {
+		return t
+	}
+	if t, err := time.Parse("2006-01-02T15:04:05-07:00", dtStr); err == nil {
+		return t
+	}
+	if t, err := time.ParseInLocation("2006-01-02 15:04:05", dtStr, time.UTC); err == nil {
+		return t
+	}
+	if t, err := time.Parse("2006-01-02 15:04:05", dtStr); err == nil {
+		return t
+	}
+	// Fallback to current time if all parsing fails
+	return time.Now()
+}
+
+// populateNullableFields populates event nullable fields from SQL null types
+func populateNullableFields(event *Event, imageData, color, priority sql.NullString, price sql.NullFloat64) {
+	if imageData.Valid {
+		event.ImageData = imageData.String
+	}
+	if color.Valid {
+		event.Color = color.String
+	}
+	if price.Valid {
+		event.Price = &price.Float64
+	}
+	if priority.Valid {
+		event.Priority = priority.String
+	}
+}
+
+// scanEventFromRow scans a database row into an Event struct
+func scanEventFromRow(event *Event, dateTimeStr sql.NullString, imageData, color, priority sql.NullString, price sql.NullFloat64) {
+	event.DateTime = parseDateTime(dateTimeStr)
+	populateNullableFields(event, imageData, color, priority, price)
+}
+
 func (e *Event) Save() error {
 	query := `
 	INSERT INTO events (name, description, location, dateTime, userID, imageData, color, price, priority)
@@ -64,49 +120,7 @@ func GetAllEvents() ([]Event, error) {
 			return nil, err
 		}
 
-		// Parse DateTime string to time.Time
-		if dateTimeStr.Valid {
-			// SQLite stores datetime as TEXT, try parsing with timezone
-			// The format "2006-01-02 15:04:05-07:00" handles both + and - timezone offsets
-			dtStr := dateTimeStr.String
-			
-			// Try parsing with timezone offset (handles both + and -)
-			if t, err := time.Parse("2006-01-02 15:04:05-07:00", dtStr); err == nil {
-				event.DateTime = t
-			} else if t, err := time.Parse("2006-01-02 15:04:05+07:00", dtStr); err == nil {
-				event.DateTime = t
-			} else if t, err := time.Parse(time.RFC3339, dtStr); err == nil {
-				event.DateTime = t
-			} else if t, err := time.Parse("2006-01-02T15:04:05Z", dtStr); err == nil {
-				event.DateTime = t
-			} else if t, err := time.Parse("2006-01-02T15:04:05-07:00", dtStr); err == nil {
-				event.DateTime = t
-			} else if t, err := time.ParseInLocation("2006-01-02 15:04:05", dtStr, time.UTC); err == nil {
-				event.DateTime = t
-			} else if t, err := time.Parse("2006-01-02 15:04:05", dtStr); err == nil {
-				event.DateTime = t
-			} else {
-				// Fallback to current time if all parsing fails
-				event.DateTime = time.Now()
-			}
-		} else {
-			event.DateTime = time.Now()
-		}
-
-		// Handle nullable fields
-		if imageData.Valid {
-			event.ImageData = imageData.String
-		}
-		if color.Valid {
-			event.Color = color.String
-		}
-		if price.Valid {
-			event.Price = &price.Float64
-		}
-		if priority.Valid {
-			event.Priority = priority.String
-		}
-
+		scanEventFromRow(&event, dateTimeStr, imageData, color, priority, price)
 		events = append(events, event)
 	}
 	return events, nil
@@ -126,49 +140,7 @@ func GetEventByID(id int64) (*Event, error) {
 		return nil, err
 	}
 
-	// Parse DateTime string to time.Time
-	if dateTimeStr.Valid {
-		// SQLite stores datetime as TEXT, try parsing with timezone
-		// The format "2006-01-02 15:04:05-07:00" handles both + and - timezone offsets
-		dtStr := dateTimeStr.String
-		
-		// Try parsing with timezone offset (handles both + and -)
-		if t, err := time.Parse("2006-01-02 15:04:05-07:00", dtStr); err == nil {
-			event.DateTime = t
-		} else if t, err := time.Parse("2006-01-02 15:04:05+07:00", dtStr); err == nil {
-			event.DateTime = t
-		} else if t, err := time.Parse(time.RFC3339, dtStr); err == nil {
-			event.DateTime = t
-		} else if t, err := time.Parse("2006-01-02T15:04:05Z", dtStr); err == nil {
-			event.DateTime = t
-		} else if t, err := time.Parse("2006-01-02T15:04:05-07:00", dtStr); err == nil {
-			event.DateTime = t
-		} else if t, err := time.ParseInLocation("2006-01-02 15:04:05", dtStr, time.UTC); err == nil {
-			event.DateTime = t
-		} else if t, err := time.Parse("2006-01-02 15:04:05", dtStr); err == nil {
-			event.DateTime = t
-		} else {
-			// Fallback to current time if all parsing fails
-			event.DateTime = time.Now()
-		}
-	} else {
-		event.DateTime = time.Now()
-	}
-
-	// Handle nullable fields
-	if imageData.Valid {
-		event.ImageData = imageData.String
-	}
-	if color.Valid {
-		event.Color = color.String
-	}
-	if price.Valid {
-		event.Price = &price.Float64
-	}
-	if priority.Valid {
-		event.Priority = priority.String
-	}
-
+	scanEventFromRow(&event, dateTimeStr, imageData, color, priority, price)
 	return &event, nil
 }
 

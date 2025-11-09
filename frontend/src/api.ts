@@ -52,6 +52,28 @@ function removeAuthToken(): void {
   localStorage.removeItem('auth_token');
 }
 
+// Helper to handle API errors consistently
+async function handleApiError(response: Response, defaultMessage: string): Promise<string> {
+  if (!response.ok) {
+    try {
+      const data = await response.json();
+      return data.message || defaultMessage;
+    } catch {
+      return `Server returned ${response.status}: ${response.statusText}`;
+    }
+  }
+  return defaultMessage;
+}
+
+// Helper to handle network errors consistently
+function handleNetworkError(error: unknown, operation: string): string {
+  const errorMessage = error instanceof Error 
+    ? `Network error: ${error.message}. Make sure the backend server is running on ${API_BASE_URL}`
+    : `Network error: Could not ${operation} at ${API_BASE_URL}. Is the backend running?`;
+  console.error(`${operation} error:`, error);
+  return errorMessage;
+}
+
 // Transform backend event to frontend event
 function backendToFrontendEvent(be: BackendEvent): Event {
   // Parse the DateTime string from backend
@@ -112,23 +134,13 @@ export async function register(email: string, password: string): Promise<{ ok: b
     });
 
     if (!response.ok) {
-      let errorMessage = 'Registration failed';
-      try {
-        const data = await response.json();
-        errorMessage = data.message || errorMessage;
-      } catch {
-        errorMessage = `Server returned ${response.status}: ${response.statusText}`;
-      }
+      const errorMessage = await handleApiError(response, 'Registration failed');
       return { ok: false, error: errorMessage };
     }
 
     return { ok: true };
   } catch (error) {
-    const errorMessage = error instanceof Error 
-      ? `Network error: ${error.message}. Make sure the backend server is running on ${API_BASE_URL}`
-      : `Network error: Could not connect to server at ${API_BASE_URL}. Is the backend running?`;
-    console.error('Registration error:', error);
-    return { ok: false, error: errorMessage };
+    return { ok: false, error: handleNetworkError(error, 'connect to server') };
   }
 }
 
@@ -143,13 +155,7 @@ export async function login(email: string, password: string): Promise<{ ok: bool
     });
 
     if (!response.ok) {
-      let errorMessage = 'Login failed';
-      try {
-        const data = await response.json();
-        errorMessage = data.message || errorMessage;
-      } catch {
-        errorMessage = `Server returned ${response.status}: ${response.statusText}`;
-      }
+      const errorMessage = await handleApiError(response, 'Login failed');
       return { ok: false, error: errorMessage };
     }
 
@@ -166,11 +172,7 @@ export async function login(email: string, password: string): Promise<{ ok: bool
 
     return { ok: false, error: 'No token received' };
   } catch (error) {
-    const errorMessage = error instanceof Error 
-      ? `Network error: ${error.message}. Make sure the backend server is running on ${API_BASE_URL}`
-      : `Network error: Could not connect to server at ${API_BASE_URL}. Is the backend running?`;
-    console.error('Login error:', error);
-    return { ok: false, error: errorMessage };
+    return { ok: false, error: handleNetworkError(error, 'connect to server') };
   }
 }
 
@@ -199,23 +201,13 @@ export async function updatePassword(newPassword: string): Promise<{ ok: boolean
     });
 
     if (!response.ok) {
-      let errorMessage = 'Failed to update password';
-      try {
-        const data = await response.json();
-        errorMessage = data.message || errorMessage;
-      } catch {
-        errorMessage = `Server returned ${response.status}: ${response.statusText}`;
-      }
+      const errorMessage = await handleApiError(response, 'Failed to update password');
       return { ok: false, error: errorMessage };
     }
 
     return { ok: true };
   } catch (error) {
-    const errorMessage = error instanceof Error 
-      ? `Network error: ${error.message}. Make sure the backend server is running on ${API_BASE_URL}`
-      : `Network error: Could not update password at ${API_BASE_URL}. Is the backend running?`;
-    console.error('Update password error:', error);
-    return { ok: false, error: errorMessage };
+    return { ok: false, error: handleNetworkError(error, 'update password') };
   }
 }
 
@@ -231,13 +223,7 @@ export async function getEvents(): Promise<{ ok: boolean; events?: Event[]; erro
     });
 
     if (!response.ok) {
-      let errorMessage = 'Failed to fetch events';
-      try {
-        const data = await response.json();
-        errorMessage = data.message || errorMessage;
-      } catch {
-        errorMessage = `Server returned ${response.status}: ${response.statusText}`;
-      }
+      const errorMessage = await handleApiError(response, 'Failed to fetch events');
       return { ok: false, error: errorMessage };
     }
 
@@ -249,11 +235,7 @@ export async function getEvents(): Promise<{ ok: boolean; events?: Event[]; erro
     const frontendEvents = backendEvents.map(backendToFrontendEvent);
     return { ok: true, events: frontendEvents };
   } catch (error) {
-    const errorMessage = error instanceof Error 
-      ? `Network error: ${error.message}. Make sure the backend server is running on ${API_BASE_URL}`
-      : `Network error: Could not fetch events from ${API_BASE_URL}. Is the backend running?`;
-    console.error('Get events error:', error);
-    return { ok: false, error: errorMessage };
+    return { ok: false, error: handleNetworkError(error, 'fetch events') };
   }
 }
 
@@ -267,15 +249,15 @@ export async function getEvent(id: string): Promise<{ ok: boolean; event?: Event
     });
 
     if (!response.ok) {
-      const data = await response.json();
-      return { ok: false, error: data.message || 'Failed to fetch event' };
+      const errorMessage = await handleApiError(response, 'Failed to fetch event');
+      return { ok: false, error: errorMessage };
     }
 
     const backendEvent: BackendEvent = await response.json();
     const frontendEvent = backendToFrontendEvent(backendEvent);
     return { ok: true, event: frontendEvent };
   } catch (error) {
-    return { ok: false, error: 'Network error: Could not fetch event' };
+    return { ok: false, error: handleNetworkError(error, 'fetch event') };
   }
 }
 
@@ -301,8 +283,8 @@ export async function createEvent(event: Event): Promise<{ ok: boolean; event?: 
     });
 
     if (!response.ok) {
-      const data = await response.json();
-      return { ok: false, error: data.message || 'Failed to create event' };
+      const errorMessage = await handleApiError(response, 'Failed to create event');
+      return { ok: false, error: errorMessage };
     }
 
     const data = await response.json();
@@ -321,7 +303,7 @@ export async function createEvent(event: Event): Promise<{ ok: boolean; event?: 
 
     return { ok: false, error: 'No event data received' };
   } catch (error) {
-    return { ok: false, error: 'Network error: Could not create event' };
+    return { ok: false, error: handleNetworkError(error, 'create event') };
   }
 }
 
@@ -344,13 +326,13 @@ export async function updateEvent(id: string, event: Event): Promise<{ ok: boole
     });
 
     if (!response.ok) {
-      const data = await response.json();
-      return { ok: false, error: data.message || 'Failed to update event' };
+      const errorMessage = await handleApiError(response, 'Failed to update event');
+      return { ok: false, error: errorMessage };
     }
 
     return { ok: true };
   } catch (error) {
-    return { ok: false, error: 'Network error: Could not update event' };
+    return { ok: false, error: handleNetworkError(error, 'update event') };
   }
 }
 
@@ -370,13 +352,13 @@ export async function deleteEvent(id: string): Promise<{ ok: boolean; error?: st
     });
 
     if (!response.ok) {
-      const data = await response.json();
-      return { ok: false, error: data.message || 'Failed to delete event' };
+      const errorMessage = await handleApiError(response, 'Failed to delete event');
+      return { ok: false, error: errorMessage };
     }
 
     return { ok: true };
   } catch (error) {
-    return { ok: false, error: 'Network error: Could not delete event' };
+    return { ok: false, error: handleNetworkError(error, 'delete event') };
   }
 }
 
