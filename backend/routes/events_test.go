@@ -39,7 +39,8 @@ func TestMain(m *testing.M) {
 	CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT NOT NULL UNIQUE,
-		password TEXT NOT NULL
+		password TEXT NOT NULL,
+		role TEXT DEFAULT 'user'
 	);
 	CREATE TABLE IF NOT EXISTS events (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,6 +49,10 @@ func TestMain(m *testing.M) {
 		location TEXT NOT NULL,
 		dateTime DATETIME NOT NULL,
 		userID INTEGER,
+		imageData TEXT,
+		color TEXT,
+		price REAL,
+		priority TEXT,
 		FOREIGN KEY (userID) REFERENCES users(id)
 	);
 	CREATE TABLE IF NOT EXISTS registrations (
