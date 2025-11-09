@@ -9,14 +9,14 @@ export default function Register() {
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     if (!name || !email || !password) {
       setError('Please fill all fields')
       return
     }
-  const res = register({ name, email, password, role: 'user' })
+    const res = await register(email, password)
     if (!res.ok) {
       setError(res.error ?? 'Registration error')
       return

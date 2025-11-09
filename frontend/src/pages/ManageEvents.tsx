@@ -21,14 +21,18 @@ export default function ManageEventsPage({ initialEvents, onCreate, onDelete, on
     setEditing(null)
   }
 
-  function handleChangePassword() {
+  async function handleChangePassword() {
     if (!user || !newPass) return
-    const res = updatePassword(user.email, newPass)
+    if (newPass.length < 6) {
+      alert('Password must be at least 6 characters long')
+      return
+    }
+    const res = await updatePassword(user.email, newPass)
     if (res.ok) {
       setNewPass('')
-      alert('Password updated')
+      alert('Password updated successfully')
     } else {
-      alert(res.error || 'Failed')
+      alert(res.error || 'Failed to update password')
     }
   }
 

@@ -9,14 +9,14 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     if (!email || !password || !role) {
       setError('Please fill all fields and select a role')
       return
     }
-    const res = login(email, password, role as 'admin' | 'user')
+    const res = await login(email, password, role as 'admin' | 'user')
     if (!res.ok) {
       setError(res.error ?? 'Invalid credentials')
       return

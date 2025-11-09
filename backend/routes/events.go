@@ -40,8 +40,13 @@ func checkEventAuthorization(context *gin.Context, event *models.Event, userId i
 func GetEvents(context *gin.Context) {
 	events, err := models.GetAllEvents()
 	if err != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{"message": "Could not retrieve events"})
+		// Log the error for debugging
+		context.JSON(http.StatusInternalServerError, gin.H{"message": "Could not retrieve events", "error": err.Error()})
 		return
+	}
+	// Ensure we always return an array, even if events is nil
+	if events == nil {
+		events = []models.Event{}
 	}
 	context.JSON(http.StatusOK, events)
 }

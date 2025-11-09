@@ -10,12 +10,13 @@ type User struct {
 	ID       int64
 	Email    string `binding:"required"`
 	Password string `binding:"required"`
+	Role     string
 }
 
 func (u User) Save() error {
 	query := `
-	INSERT INTO users (email, password)
-	VALUES (?, ?)`
+	INSERT INTO users (email, password, role)
+	VALUES (?, ?, ?)`
 	stmt, err := db.DB.Prepare(query)
 
 	if err != nil {
@@ -30,7 +31,13 @@ func (u User) Save() error {
 		return err
 	}
 
-	result, err := stmt.Exec(u.Email, hashedPassword)
+	// Default role to 'user' if not specified
+	role := u.Role
+	if role == "" {
+		role = "user"
+	}
+
+	result, err := stmt.Exec(u.Email, hashedPassword, role)
 
 	if err != nil {
 		return err
@@ -42,12 +49,12 @@ func (u User) Save() error {
 }
 
 func (u *User) ValidateCredentials() error {
-	query := "SELECT id, password FROM users WHERE email = ?"
+	query := "SELECT id, password, COALESCE(role, 'user') FROM users WHERE email = ?"
 
 	row := db.DB.QueryRow(query, u.Email)
 
 	var retrievedPassword string
-	err := row.Scan(&u.ID, &retrievedPassword)
+	err := row.Scan(&u.ID, &retrievedPassword, &u.Role)
 
 	if err != nil {
 		return errors.New("Invalid credentials")
@@ -59,5 +66,27 @@ func (u *User) ValidateCredentials() error {
 		return errors.New("Invalid credentials")
 	}
 
+	// Default role to 'user' if not set
+	if u.Role == "" {
+		u.Role = "user"
+	}
+
 	return nil
+}
+
+func (u *User) UpdatePassword(newPassword string) error {
+	hashedPassword, err := utils.HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+
+	query := "UPDATE users SET password = ? WHERE id = ?"
+	stmt, err := db.DB.Prepare(query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(hashedPassword, u.ID)
+	return err
 }
