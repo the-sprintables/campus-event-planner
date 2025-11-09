@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Helper function to parse event ID from URL parameter
 func parseEventID(context *gin.Context) (int64, bool) {
 	eventId, err := strconv.ParseInt(context.Param("id"), 10, 64)
 	if err != nil {
@@ -17,6 +18,7 @@ func parseEventID(context *gin.Context) (int64, bool) {
 	return eventId, true
 }
 
+// Helper function to get event by ID and handle errors
 func getEventByID(context *gin.Context, eventId int64) (*models.Event, bool) {
 	event, err := models.GetEventByID(eventId)
 	if err != nil {
@@ -26,6 +28,7 @@ func getEventByID(context *gin.Context, eventId int64) (*models.Event, bool) {
 	return event, true
 }
 
+// Helper function to check if user is authorized to modify event
 func checkEventAuthorization(context *gin.Context, event *models.Event, userId int64, action string) bool {
 	if event.UserID != userId {
 		context.JSON(http.StatusUnauthorized, gin.H{"message": "You are not authorized to " + action + " this event"})
@@ -37,8 +40,13 @@ func checkEventAuthorization(context *gin.Context, event *models.Event, userId i
 func GetEvents(context *gin.Context) {
 	events, err := models.GetAllEvents()
 	if err != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{"message": "Could not retrieve events"})
+		// Log the error for debugging
+		context.JSON(http.StatusInternalServerError, gin.H{"message": "Could not retrieve events", "error": err.Error()})
 		return
+	}
+	// Ensure we always return an array, even if events is nil
+	if events == nil {
+		events = []models.Event{}
 	}
 	context.JSON(http.StatusOK, events)
 }

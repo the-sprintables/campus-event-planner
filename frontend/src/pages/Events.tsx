@@ -12,16 +12,28 @@ function getPriorityLabel(priority: string = 'available') {
 
 export default function EventsPage({ events }: { events: Event[] }) {
   const [selected, setSelected] = useState<Event | null>(null)
+  
+  // Handle null or undefined events
+  if (!events || !Array.isArray(events)) {
+    return <div className="events-page">No events available.</div>
+  }
+  
   return (
     <div className="events-page">
       <section className="left">
         <div className="view-grid">
-          {events.map(ev => (
+          {events.length === 0 ? (
+            <div className="empty">No events planned yet.</div>
+          ) : (
+            events.map(ev => (
             <div key={ev.id} className="event-card card">
               {/* media: use image if available via background-image, else gradient based on color */}
               <div
                 className="media"
-                style={{ background: ev.imageData ? `url(${ev.imageData}) center/cover no-repeat` : (ev.color ? `linear-gradient(120deg, ${ev.color}, #ffffff)` : 'linear-gradient(120deg, #fef3c7, #ffffff)') }}
+                style={ev.imageData && ev.imageData.trim() !== ''
+                  ? { backgroundImage: `url(${ev.imageData})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
+                  : { background: ev.color && ev.color.trim() !== '' ? `linear-gradient(120deg, ${ev.color}, #ffffff)` : 'linear-gradient(120deg, #fef3c7, #ffffff)' }
+                }
               />
               <div className="badge">{getPriorityLabel(ev.priority)}</div>
               <div className="title">{ev.title}</div>
@@ -31,7 +43,8 @@ export default function EventsPage({ events }: { events: Event[] }) {
                 <button className="btn ghost" onClick={() => setSelected(ev)}>View</button>
               </div>
             </div>
-          ))}
+            ))
+          )}
         </div>
       </section>
 

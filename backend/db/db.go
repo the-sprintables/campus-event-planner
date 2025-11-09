@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"event-planner/utils"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -27,7 +28,8 @@ func createTables() {
 	CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT NOT NULL UNIQUE,
-		password TEXT NOT NULL
+		password TEXT NOT NULL,
+		role TEXT DEFAULT 'user'
 	);
 	`
 	_, err := DB.Exec(createUsersTable)
@@ -44,6 +46,10 @@ func createTables() {
 		location TEXT NOT NULL,
 		dateTime DATETIME NOT NULL,
 		userID INTEGER,
+		imageData TEXT,
+		color TEXT,
+		price REAL,
+		priority TEXT,
 		FOREIGN KEY (userID) REFERENCES users(id)
 	);
 	`
@@ -67,4 +73,53 @@ func createTables() {
 	if err != nil {
 		panic("Could not create registrations table")
 	}
+
+	// Migrate existing events table to add new columns if they don't exist
+	migrateEventsTable()
+
+	// Create default admin user if it doesn't exist
+	createDefaultAdmin()
+}
+
+func createDefaultAdmin() {
+	// Try to add role column if it doesn't exist (for existing databases)
+	// SQLite doesn't support IF NOT EXISTS for ALTER TABLE ADD COLUMN, so we'll ignore errors
+	_, _ = DB.Exec("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'")
+
+	// Check if admin user already exists
+	var count int
+	err := DB.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", "admin@email.com").Scan(&count)
+	if err != nil {
+		// Error checking, skip admin creation
+		return
+	}
+
+	// If admin doesn't exist, create it
+	if count == 0 {
+		hashedPassword, err := utils.HashPassword("admin")
+		if err != nil {
+			// Log error but don't panic - admin can be created manually
+			return
+		}
+
+		_, err = DB.Exec("INSERT INTO users (email, password, role) VALUES (?, ?, ?)", 
+			"admin@email.com", hashedPassword, "admin")
+		if err != nil {
+			// Log error but don't panic
+			return
+		}
+	} else {
+		// Admin exists, make sure it has admin role
+		_, _ = DB.Exec("UPDATE users SET role = 'admin' WHERE email = ? AND (role IS NULL OR role != 'admin')", 
+			"admin@email.com")
+	}
+}
+
+func migrateEventsTable() {
+	// Add new columns to events table if they don't exist (for existing databases)
+	// SQLite doesn't support IF NOT EXISTS for ALTER TABLE ADD COLUMN, so we ignore errors
+	_, _ = DB.Exec("ALTER TABLE events ADD COLUMN imageData TEXT")
+	_, _ = DB.Exec("ALTER TABLE events ADD COLUMN color TEXT")
+	_, _ = DB.Exec("ALTER TABLE events ADD COLUMN price REAL")
+	_, _ = DB.Exec("ALTER TABLE events ADD COLUMN priority TEXT")
 }
