@@ -58,6 +58,20 @@ func TestRegisterRoutes(t *testing.T) {
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 	assert.NotEqual(t, http.StatusNotFound, w.Code)
+
+	// Test POST /events/:id/register (authenticated)
+	req, _ = http.NewRequest("POST", "/events/1/register", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	// Should either return 401 (unauthorized) or 400/500 (bad request/internal error), not 404
+	assert.NotEqual(t, http.StatusNotFound, w.Code)
+
+	// Test DELETE /events/:id/register (authenticated)
+	req, _ = http.NewRequest("DELETE", "/events/1/register", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	// Should either return 401 (unauthorized) or 400/500 (bad request/internal error), not 404
+	assert.NotEqual(t, http.StatusNotFound, w.Code)
 }
 
 func TestRegisterRoutes_AuthenticatedGroup(t *testing.T) {
@@ -75,6 +89,8 @@ func TestRegisterRoutes_AuthenticatedGroup(t *testing.T) {
 		{"POST", "/events"},
 		{"PUT", "/events/1"},
 		{"DELETE", "/events/1"},
+		{"POST", "/events/1/register"},
+		{"DELETE", "/events/1/register"},
 	}
 
 	for _, tc := range testCases {
