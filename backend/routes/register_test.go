@@ -11,15 +11,15 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/gin-gonic/gin"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"
 )
 
 func setupRegisterTestRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	
+
 	// Set up middleware to add userId to context
 	router.POST("/events/:id/register", func(c *gin.Context) {
 		// Get userId from query param for testing flexibility
@@ -32,7 +32,7 @@ func setupRegisterTestRouter() *gin.Engine {
 		}
 		registerForEvent(c)
 	})
-	
+
 	router.DELETE("/events/:id/register", func(c *gin.Context) {
 		// Get userId from query param for testing flexibility
 		userIdStr := c.Query("userId")
@@ -44,7 +44,7 @@ func setupRegisterTestRouter() *gin.Engine {
 		}
 		cancelRegistration(c)
 	})
-	
+
 	return router
 }
 
@@ -75,6 +75,7 @@ func TestRegisterForEvent_Valid(t *testing.T) {
 		color TEXT,
 		price REAL,
 		priority TEXT,
+		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
 		FOREIGN KEY (userID) REFERENCES users(id)
 	);
 	CREATE TABLE IF NOT EXISTS registrations (
@@ -108,11 +109,12 @@ func TestRegisterForEvent_Valid(t *testing.T) {
 
 	// Create a test event
 	event := models.Event{
-		Name:        "Test Event",
-		Description: "Test Description",
-		Location:    "Test Location",
-		DateTime:    time.Now(),
-		UserID:      user.ID,
+		Name:             "Test Event",
+		Description:      "Test Description",
+		Location:         "Test Location",
+		DateTime:         time.Now(),
+		UserID:           user.ID,
+		TicketsAvailable: 10,
 	}
 	err = event.Save()
 	if err != nil {
@@ -179,6 +181,7 @@ func TestRegisterForEvent_EventNotFound(t *testing.T) {
 		color TEXT,
 		price REAL,
 		priority TEXT,
+		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
 		FOREIGN KEY (userID) REFERENCES users(id)
 	);
 	CREATE TABLE IF NOT EXISTS registrations (
@@ -238,6 +241,7 @@ func TestRegisterForEvent_DuplicateRegistration(t *testing.T) {
 		color TEXT,
 		price REAL,
 		priority TEXT,
+		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
 		FOREIGN KEY (userID) REFERENCES users(id)
 	);
 	CREATE TABLE IF NOT EXISTS registrations (
@@ -272,11 +276,12 @@ func TestRegisterForEvent_DuplicateRegistration(t *testing.T) {
 
 	// Create a test event
 	event := models.Event{
-		Name:        "Test Event",
-		Description: "Test Description",
-		Location:    "Test Location",
-		DateTime:    time.Now(),
-		UserID:      user.ID,
+		Name:             "Test Event",
+		Description:      "Test Description",
+		Location:         "Test Location",
+		DateTime:         time.Now(),
+		UserID:           user.ID,
+		TicketsAvailable: 15,
 	}
 	err = event.Save()
 	if err != nil {
@@ -296,11 +301,11 @@ func TestRegisterForEvent_DuplicateRegistration(t *testing.T) {
 	w2 := httptest.NewRecorder()
 	router.ServeHTTP(w2, req2)
 
-	assert.Equal(t, http.StatusInternalServerError, w2.Code)
+	assert.Equal(t, http.StatusConflict, w2.Code)
 
 	var response map[string]interface{}
 	json.Unmarshal(w2.Body.Bytes(), &response)
-	assert.Equal(t, "Could not register for event", response["message"])
+	assert.Equal(t, "User already registered for this event", response["message"])
 }
 
 func TestRegisterForEvent_MissingUserId(t *testing.T) {
@@ -330,6 +335,7 @@ func TestRegisterForEvent_MissingUserId(t *testing.T) {
 		color TEXT,
 		price REAL,
 		priority TEXT,
+		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
 		FOREIGN KEY (userID) REFERENCES users(id)
 	);
 	CREATE TABLE IF NOT EXISTS registrations (
@@ -362,11 +368,12 @@ func TestRegisterForEvent_MissingUserId(t *testing.T) {
 	}
 
 	event := models.Event{
-		Name:        "Test Event",
-		Description: "Test Description",
-		Location:    "Test Location",
-		DateTime:    time.Now(),
-		UserID:      user.ID,
+		Name:             "Test Event",
+		Description:      "Test Description",
+		Location:         "Test Location",
+		DateTime:         time.Now(),
+		UserID:           user.ID,
+		TicketsAvailable: 20,
 	}
 	err = event.Save()
 	if err != nil {
@@ -417,6 +424,7 @@ func TestCancelRegistration_Valid(t *testing.T) {
 		color TEXT,
 		price REAL,
 		priority TEXT,
+		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
 		FOREIGN KEY (userID) REFERENCES users(id)
 	);
 	CREATE TABLE IF NOT EXISTS registrations (
@@ -450,11 +458,12 @@ func TestCancelRegistration_Valid(t *testing.T) {
 
 	// Create a test event
 	event := models.Event{
-		Name:        "Test Event",
-		Description: "Test Description",
-		Location:    "Test Location",
-		DateTime:    time.Now(),
-		UserID:      user.ID,
+		Name:             "Test Event",
+		Description:      "Test Description",
+		Location:         "Test Location",
+		DateTime:         time.Now(),
+		UserID:           user.ID,
+		TicketsAvailable: 15,
 	}
 	err = event.Save()
 	if err != nil {
@@ -535,6 +544,7 @@ func TestCancelRegistration_NoRegistrationExists(t *testing.T) {
 		color TEXT,
 		price REAL,
 		priority TEXT,
+		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
 		FOREIGN KEY (userID) REFERENCES users(id)
 	);
 	CREATE TABLE IF NOT EXISTS registrations (
@@ -568,11 +578,12 @@ func TestCancelRegistration_NoRegistrationExists(t *testing.T) {
 
 	// Create a test event
 	event := models.Event{
-		Name:        "Test Event",
-		Description: "Test Description",
-		Location:    "Test Location",
-		DateTime:    time.Now(),
-		UserID:      user.ID,
+		Name:             "Test Event",
+		Description:      "Test Description",
+		Location:         "Test Location",
+		DateTime:         time.Now(),
+		UserID:           user.ID,
+		TicketsAvailable: 15,
 	}
 	err = event.Save()
 	if err != nil {
@@ -580,19 +591,16 @@ func TestCancelRegistration_NoRegistrationExists(t *testing.T) {
 	}
 
 	// Try to cancel registration that doesn't exist
-	// Note: CancelRegistration doesn't check if registration exists, it just deletes
-	// So this should succeed (DELETE with no matching rows is still successful)
 	router := setupRegisterTestRouter()
 	req, _ := http.NewRequest("DELETE", "/events/"+strconv.FormatInt(event.ID, 10)+"/register?userId="+strconv.FormatInt(user.ID, 10), nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	// Should succeed even if registration doesn't exist (DELETE is idempotent)
-	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 
 	var response map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &response)
-	assert.Equal(t, "Cancelled successfully", response["message"])
+	assert.Equal(t, "Event does not exist or has already been cancelled", response["message"])
 }
 
 func TestCancelRegistration_MissingUserId(t *testing.T) {
@@ -622,6 +630,7 @@ func TestCancelRegistration_MissingUserId(t *testing.T) {
 		color TEXT,
 		price REAL,
 		priority TEXT,
+		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
 		FOREIGN KEY (userID) REFERENCES users(id)
 	);
 	CREATE TABLE IF NOT EXISTS registrations (
@@ -655,11 +664,12 @@ func TestCancelRegistration_MissingUserId(t *testing.T) {
 
 	// Create a test event
 	event := models.Event{
-		Name:        "Test Event",
-		Description: "Test Description",
-		Location:    "Test Location",
-		DateTime:    time.Now(),
-		UserID:      user.ID,
+		Name:             "Test Event",
+		Description:      "Test Description",
+		Location:         "Test Location",
+		DateTime:         time.Now(),
+		UserID:           user.ID,
+		TicketsAvailable: 15,
 	}
 	err = event.Save()
 	if err != nil {
@@ -678,7 +688,9 @@ func TestCancelRegistration_MissingUserId(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	// Should succeed (DELETE with userId = 0 will just delete nothing, which is still OK)
-	assert.Equal(t, http.StatusOK, w.Code)
-}
+	assert.Equal(t, http.StatusNotFound, w.Code)
 
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.Equal(t, "Event does not exist or has already been cancelled", response["message"])
+}
