@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Helper function to parse event ID from URL parameter
 func parseEventID(context *gin.Context) (int64, bool) {
 	eventId, err := strconv.ParseInt(context.Param("id"), 10, 64)
 	if err != nil {
@@ -18,7 +17,6 @@ func parseEventID(context *gin.Context) (int64, bool) {
 	return eventId, true
 }
 
-// Helper function to get event by ID and handle errors
 func getEventByID(context *gin.Context, eventId int64) (*models.Event, bool) {
 	event, err := models.GetEventByID(eventId)
 	if err != nil {
@@ -28,7 +26,6 @@ func getEventByID(context *gin.Context, eventId int64) (*models.Event, bool) {
 	return event, true
 }
 
-// Helper function to check if user is authorized to modify event
 func checkEventAuthorization(context *gin.Context, event *models.Event, userId int64, action string) bool {
 	if event.UserID != userId {
 		context.JSON(http.StatusUnauthorized, gin.H{"message": "You are not authorized to " + action + " this event"})
@@ -40,11 +37,9 @@ func checkEventAuthorization(context *gin.Context, event *models.Event, userId i
 func GetEvents(context *gin.Context) {
 	events, err := models.GetAllEvents()
 	if err != nil {
-		// Log the error for debugging
 		context.JSON(http.StatusInternalServerError, gin.H{"message": "Could not retrieve events", "error": err.Error()})
 		return
 	}
-	// Ensure we always return an array, even if events is nil
 	if events == nil {
 		events = []models.Event{}
 	}
@@ -56,6 +51,11 @@ func CreateEvent(context *gin.Context) {
 	err := context.ShouldBindJSON(&event)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"message": "Could not parse data"})
+		return
+	}
+
+	if event.TicketsAvailable < 0 {
+		context.JSON(http.StatusBadRequest, gin.H{"message": "TicketsAvailable cannot be negative"})
 		return
 	}
 
@@ -109,6 +109,10 @@ func UpdateEvent(context *gin.Context) {
 	}
 
 	updateEvent.ID = eventId
+	if updateEvent.TicketsAvailable < 0 {
+		context.JSON(http.StatusBadRequest, gin.H{"message": "TicketsAvailable cannot be negative"})
+		return
+	}
 	err = updateEvent.Update()
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"message": "Could not update event"})
@@ -141,4 +145,43 @@ func DeleteEvent(context *gin.Context) {
 	}
 
 	context.JSON(http.StatusOK, gin.H{"message": "Event deleted successfully"})
+}
+
+type ticketUpdateRequest struct {
+	TicketsAvailable int64 `json:"TicketsAvailable" binding:"required,gte=0"`
+}
+
+func UpdateEventTicketCount(context *gin.Context) {
+	eventId, ok := parseEventID(context)
+	if !ok {
+		return
+	}
+
+	userId := context.GetInt64("userId")
+	event, ok := getEventByID(context, eventId)
+	if !ok {
+		return
+	}
+
+	if !checkEventAuthorization(context, event, userId, "update ticket count for") {
+		return
+	}
+
+	var payload ticketUpdateRequest
+	if err := context.ShouldBindJSON(&payload); err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"message": "Could not parse data"})
+		return
+	}
+
+	err := models.UpdateEventTickets(eventId, payload.TicketsAvailable)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"message": "Could not update ticket count"})
+		return
+	}
+
+	context.JSON(http.StatusOK, gin.H{
+		"message":          "Ticket count updated successfully",
+		"ticketsAvailable": payload.TicketsAvailable,
+		"eventId":          eventId,
+	})
 }
