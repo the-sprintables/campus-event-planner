@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: campus-event-planner-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+    volumes:
+      # Mount database file for persistence (optional)
+      - ./backend/api.db:/home/appuser/api.db
+    restart: unless-stopped
+    networks:
+      - event-planner-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: campus-event-planner-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - event-planner-network
+
+networks:
+  event-planner-network:
+    driver: bridge
+
+
+
+
+
+
