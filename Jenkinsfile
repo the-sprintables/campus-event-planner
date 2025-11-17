@@ -116,14 +116,17 @@ pipeline {
                         sh "rsync -av --exclude='.git' --exclude='node_modules' --exclude='dist' '${local}/' ."
                         echo "Copied from local path: ${local}"
                     } else {
+                        // Use BRANCH_NAME if available (from Jenkins SCM), otherwise fall back to GIT_BRANCH
+                        def branch = (env.BRANCH_NAME ?: env.GIT_BRANCH ?: 'development').replaceAll('origin/','').replaceAll('.*/','')
                         def cfg = [
                             $class: 'GitSCM',
-                            branches: [[name: "*/${env.GIT_BRANCH}"]],
+                            branches: [[name: "*/${branch}"]],
                             doGenerateSubmoduleConfigurations: false,
                             extensions: [],
                             userRemoteConfigs: [[url: src, credentialsId: env.GIT_CREDENTIALS_ID ?: null]]
                         ]
                         if (!env.GIT_CREDENTIALS_ID) cfg.userRemoteConfigs[0].remove('credentialsId')
+                        echo "Checking out branch: ${branch}"
                         checkout(cfg)
                     }
                 }
