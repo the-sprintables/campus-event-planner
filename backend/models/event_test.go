@@ -34,6 +34,7 @@ func setupEventTestDB(t *testing.T) *sql.DB {
 		color TEXT,
 		price REAL,
 		priority TEXT,
+		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
 		FOREIGN KEY (userID) REFERENCES users(id)
 	);
 	CREATE TABLE IF NOT EXISTS registrations (
@@ -83,38 +84,41 @@ func TestEvent_Save(t *testing.T) {
 		{
 			name: "valid event with all fields",
 			event: Event{
-				Name:        "Test Event",
-				Description: "Test Description",
-				Location:    "Test Location",
-				DateTime:    time.Now(),
-				UserID:      userID,
-				ImageData:   "base64imagedata",
-				Color:       "blue",
-				Price:       func() *float64 { p := 25.50; return &p }(),
-				Priority:    "high",
+				Name:             "Test Event",
+				Description:      "Test Description",
+				Location:         "Test Location",
+				DateTime:         time.Now(),
+				UserID:           userID,
+				ImageData:        "base64imagedata",
+				Color:            "blue",
+				Price:            func() *float64 { p := 25.50; return &p }(),
+				Priority:         "high",
+				TicketsAvailable: 100,
 			},
 			wantErr: false,
 		},
 		{
 			name: "event with minimal fields",
 			event: Event{
-				Name:        "Minimal Event",
-				Description: "Minimal Description",
-				Location:    "Minimal Location",
-				DateTime:    time.Now(),
-				UserID:      userID,
+				Name:             "Minimal Event",
+				Description:      "Minimal Description",
+				Location:         "Minimal Location",
+				DateTime:         time.Now(),
+				UserID:           userID,
+				TicketsAvailable: 50,
 			},
 			wantErr: false,
 		},
 		{
 			name: "event with nil price",
 			event: Event{
-				Name:        "Free Event",
-				Description: "Free Description",
-				Location:    "Free Location",
-				DateTime:    time.Now(),
-				UserID:      userID,
-				Price:       nil,
+				Name:             "Free Event",
+				Description:      "Free Description",
+				Location:         "Free Location",
+				DateTime:         time.Now(),
+				UserID:           userID,
+				Price:            nil,
+				TicketsAvailable: 0,
 			},
 			wantErr: false,
 		},
@@ -166,21 +170,23 @@ func TestGetAllEvents(t *testing.T) {
 
 	// Create some test events
 	event1 := Event{
-		Name:        "Event 1",
-		Description: "Description 1",
-		Location:    "Location 1",
-		DateTime:    time.Now(),
-		UserID:      userID,
+		Name:             "Event 1",
+		Description:      "Description 1",
+		Location:         "Location 1",
+		DateTime:         time.Now(),
+		UserID:           userID,
+		TicketsAvailable: 20,
 	}
 	err = event1.Save()
 	assert.NoError(t, err)
 
 	event2 := Event{
-		Name:        "Event 2",
-		Description: "Description 2",
-		Location:    "Location 2",
-		DateTime:    time.Now().Add(time.Hour),
-		UserID:      userID,
+		Name:             "Event 2",
+		Description:      "Description 2",
+		Location:         "Location 2",
+		DateTime:         time.Now().Add(time.Hour),
+		UserID:           userID,
+		TicketsAvailable: 25,
 	}
 	err = event2.Save()
 	assert.NoError(t, err)
@@ -211,12 +217,13 @@ func TestGetEventByID(t *testing.T) {
 
 	// Create a test event
 	event := Event{
-		Name:        "Test Event",
-		Description: "Test Description",
-		Location:    "Test Location",
-		DateTime:    time.Now(),
-		UserID:      userID,
-		Color:       "red",
+		Name:             "Test Event",
+		Description:      "Test Description",
+		Location:         "Test Location",
+		DateTime:         time.Now(),
+		UserID:           userID,
+		Color:            "red",
+		TicketsAvailable: 75,
 	}
 	err := event.Save()
 	assert.NoError(t, err)
@@ -259,11 +266,12 @@ func TestEvent_Update(t *testing.T) {
 
 	// Create a test event
 	event := Event{
-		Name:        "Original Name",
-		Description: "Original Description",
-		Location:    "Original Location",
-		DateTime:    time.Now(),
-		UserID:      userID,
+		Name:             "Original Name",
+		Description:      "Original Description",
+		Location:         "Original Location",
+		DateTime:         time.Now(),
+		UserID:           userID,
+		TicketsAvailable: 40,
 	}
 	err := event.Save()
 	assert.NoError(t, err)
@@ -302,11 +310,12 @@ func TestEvent_Delete(t *testing.T) {
 
 	// Create a test event
 	event := Event{
-		Name:        "Event to Delete",
-		Description: "Description",
-		Location:    "Location",
-		DateTime:    time.Now(),
-		UserID:      userID,
+		Name:             "Event to Delete",
+		Description:      "Description",
+		Location:         "Location",
+		DateTime:         time.Now(),
+		UserID:           userID,
+		TicketsAvailable: 10,
 	}
 	err := event.Save()
 	assert.NoError(t, err)
@@ -343,11 +352,12 @@ func TestEvent_Register(t *testing.T) {
 
 	// Create a test event
 	event := Event{
-		Name:        "Test Event",
-		Description: "Test Description",
-		Location:    "Test Location",
-		DateTime:    time.Now(),
-		UserID:      userID,
+		Name:             "Test Event",
+		Description:      "Test Description",
+		Location:         "Test Location",
+		DateTime:         time.Now(),
+		UserID:           userID,
+		TicketsAvailable: 15,
 	}
 	err = event.Save()
 	assert.NoError(t, err)
@@ -385,11 +395,12 @@ func TestEvent_CancelRegistration(t *testing.T) {
 
 	// Create a test event
 	event := Event{
-		Name:        "Test Event",
-		Description: "Test Description",
-		Location:    "Test Location",
-		DateTime:    time.Now(),
-		UserID:      userID,
+		Name:             "Test Event",
+		Description:      "Test Description",
+		Location:         "Test Location",
+		DateTime:         time.Now(),
+		UserID:           userID,
+		TicketsAvailable: 15,
 	}
 	err = event.Save()
 	assert.NoError(t, err)
@@ -455,4 +466,3 @@ func TestParseDateTime(t *testing.T) {
 		})
 	}
 }
-
