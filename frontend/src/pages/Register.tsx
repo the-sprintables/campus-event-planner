@@ -22,7 +22,7 @@ export default function Register() {
       return
     }
     // successful registration -> go to login
-    navigate('/login')
+    navigate('/feed')
   }
 
   return (

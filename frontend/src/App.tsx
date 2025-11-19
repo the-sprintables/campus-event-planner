@@ -13,6 +13,7 @@ import RequireAdmin from './components/RequireAdmin'
 import { currentUser, logout } from './auth'
 import { useNavigate } from 'react-router-dom'
 import * as api from './api'
+import Feed from './pages/Feed'
 
 export default function App() {
   const navigate = useNavigate()
@@ -126,6 +127,7 @@ export default function App() {
           )} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/feed" element={<Feed />} />
         </Routes>
       </main>
     </div>

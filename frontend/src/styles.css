@@ -1,3 +1,6 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
 /* Modern, classy styles */
 :root{
 	--bg: #f4f6fb;
