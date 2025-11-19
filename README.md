@@ -28,3 +28,5 @@ sonar-scanner
 - Backend (Go): `go test ./... -coverprofile=backend/coverage.out` is used by CI; local runs can produce the same file.
 
 Configuration lives in `sonar-project.properties` at the repo root.
+
+## Test
