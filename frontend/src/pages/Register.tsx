@@ -21,8 +21,10 @@ export default function Register() {
       setError(res.error ?? "Registration error");
       return;
     }
+    // Mark as new user so login page knows to show customize modal
+    localStorage.setItem(`is_new_user_${email}`, 'true');
     // successful registration -> go to login
-    navigate("/feed");
+    navigate("/login");
   }
 
   return (

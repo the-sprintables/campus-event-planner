@@ -91,7 +91,6 @@ export default function App() {
       <header>
         <Link to="/">The Sprintables!</Link>
         <nav>
-          <Link to="/feed">Customize Events</Link> |
           <Link to="/">View events</Link> |
           {user?.role === 'admin' && (
             <>

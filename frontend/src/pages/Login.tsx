@@ -21,7 +21,16 @@ export default function Login() {
       setError(res.error ?? "Invalid credentials");
       return;
     }
-    navigate("/");
+    
+    // Check if this is a new user's first login
+    const isNewUser = localStorage.getItem(`is_new_user_${email}`) === 'true';
+    if (isNewUser) {
+      // Clear the flag and redirect to customize events
+      localStorage.removeItem(`is_new_user_${email}`);
+      navigate("/feed");
+    } else {
+      navigate("/");
+    }
   }
 
   return (

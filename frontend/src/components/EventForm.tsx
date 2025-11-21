@@ -55,15 +55,16 @@ export default function EventForm({
   const [selectedType, setSelectedType] = useState<string>("");
   const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
   const eventTypes = [
-    "Technology",
-    "Sports",
-    "Medicine",
-    "Fitness",
-    "Entertainment",
-    "Arts",
-    "Education",
-    "Travel",
-    "Party",
+    "Sports & Fitness",
+    "Music & Entertainment",
+    "Parties & Social",
+    "Business & Professional",
+    "Education & Learning",
+    "Arts & Culture",
+    "Community & Charity",
+    "Food & Drink",
+    "Travel & Outdoors",
+    "Health & Wellness",
   ];
   const handleSelect = (type: string) => {
     setSelectedType(type);

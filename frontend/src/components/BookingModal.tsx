@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Event } from '../types'
-import { currentUser } from '../auth'
+import { currentUser, logout } from '../auth'
+import { registerForEvent, getAuthTokenFromStorage } from '../api'
 
 interface BookingModalProps {
   event: Event | null
@@ -19,8 +20,18 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
 
   if (!isOpen || !event) return null
 
-  const handleBookEvent = () => {
-    if (!event || !user) return
+  const handleBookEvent = async () => {
+    if (!event || !user) {
+      setBookingError('You must be logged in to book an event')
+      return
+    }
+
+    // Check if token exists
+    const token = getAuthTokenFromStorage()
+    if (!token) {
+      setBookingError('Authentication required. Please log in again.')
+      return
+    }
 
     // Validate ticket quantity
     const availableTickets = (event.capacity || 10) - (event.registrationCount || 0)
@@ -37,21 +48,41 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
     setIsBooking(true)
     setBookingError('')
 
-    // Simulate booking process with a short delay for better UX
-    setTimeout(() => {
-      setBookingSuccess(true)
+    try {
+      // Register for the event (for now, we'll register once per ticket quantity)
+      // Note: The backend currently supports one registration per user, so we'll register once
+      // If you need multiple tickets per registration, the backend would need to support that
+      const result = await registerForEvent(event.id)
+      
+      if (result.ok) {
+        setBookingSuccess(true)
+        setIsBooking(false)
+        
+        // Notify parent of successful booking
+        onBookingSuccess(event.id)
+        
+        // Auto close after 3 seconds to give user time to see confirmation
+        setTimeout(() => {
+          setBookingSuccess(false)
+          setTicketQuantity(1) // Reset quantity
+          onClose()
+        }, 3000)
+      } else {
+        const errorMsg = result.error || 'Failed to book event'
+        // Check if it's an authentication error
+        if (errorMsg.includes('authorization') || errorMsg.includes('authorized') || errorMsg.includes('Authentication') || errorMsg.includes('Invalid/No authorization token')) {
+          // Clear the session since token is invalid
+          logout()
+          setBookingError('Your session has expired. Please log in again to book this event.')
+        } else {
+          setBookingError(errorMsg)
+        }
+        setIsBooking(false)
+      }
+    } catch (error) {
+      setBookingError('Network error occurred while booking. Please check your connection and try again.')
       setIsBooking(false)
-      
-      // Simulate updating event registration count
-      onBookingSuccess(event.id)
-      
-      // Auto close after 3 seconds to give user time to see confirmation
-      setTimeout(() => {
-        setBookingSuccess(false)
-        setTicketQuantity(1) // Reset quantity
-        onClose()
-      }, 3000)
-    }, 1000) // 1 second delay to simulate processing
+    }
   }
 
   const handleClose = () => {

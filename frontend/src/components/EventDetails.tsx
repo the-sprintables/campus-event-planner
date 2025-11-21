@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Event } from '../types'
-import { registerForEvent, unregisterFromEvent, checkEventRegistration } from '../api'
+import { registerForEvent, unregisterFromEvent } from '../api'
 import { currentUser } from '../auth'
 
 interface EventDetailsProps {
@@ -9,31 +9,18 @@ interface EventDetailsProps {
 }
 
 export default function EventDetails({ event, onRegistrationChange }: EventDetailsProps) {
-  const [isRegistered, setIsRegistered] = useState<boolean>(false)
+  const [isRegistered, setIsRegistered] = useState<boolean>(event?.isRegistered || false)
   const [registrationLoading, setRegistrationLoading] = useState<boolean>(false)
   const [registrationError, setRegistrationError] = useState<string>('')
-  const [checkingRegistration, setCheckingRegistration] = useState<boolean>(false)
   
   const user = currentUser()
 
-  // Check registration status when component mounts or event changes
+  // Update isRegistered when event changes
   useEffect(() => {
-    if (!event || !user) return
-
-    const checkRegistrationStatus = async () => {
-      setCheckingRegistration(true)
-      const result = await checkEventRegistration(event.id)
-      if (result.ok && result.data) {
-        setIsRegistered(result.data.isRegistered)
-      } else {
-        // If we can't check registration status, fall back to event property
-        setIsRegistered(event.isRegistered || false)
-      }
-      setCheckingRegistration(false)
+    if (event) {
+      setIsRegistered(event.isRegistered || false)
     }
-
-    checkRegistrationStatus()
-  }, [event, user])
+  }, [event])
 
   const handleRegistration = async () => {
     if (!event || !user) return
@@ -116,27 +103,26 @@ export default function EventDetails({ event, onRegistrationChange }: EventDetai
       {/* Registration button */}
       {canRegister && (
         <div className="registration-section" style={{ marginTop: 24 }}>
-          {checkingRegistration ? (
-            <div style={{ color: 'var(--muted)' }}>Checking registration status...</div>
-          ) : (
-            <>
-              <button 
-                className={isRegistered ? "btn ghost" : "btn"}
-                onClick={handleRegistration}
-                disabled={registrationLoading || (isEventFull && !isRegistered)}
-                style={{ marginRight: 8 }}
-              >
-                {registrationLoading ? 'Processing...' : 
-                 isRegistered ? 'Unregister' : 
-                 isEventFull ? 'Event Full' : 'Register'}
-              </button>
-              
-              {isRegistered && (
-                <span style={{ color: 'green', fontSize: '0.9em' }}>
-                  ✓ You are registered
-                </span>
-              )}
-            </>
+          <button 
+            className={isRegistered ? "btn ghost" : "btn"}
+            onClick={handleRegistration}
+            disabled={registrationLoading || (isEventFull && !isRegistered)}
+            style={isRegistered ? {
+              backgroundColor: '#dc3545',
+              borderColor: '#dc3545',
+              color: 'white',
+              marginRight: 8
+            } : { marginRight: 8 }}
+          >
+            {registrationLoading ? 'Processing...' : 
+             isRegistered ? 'Cancel Booking' : 
+             isEventFull ? 'Event Full' : 'Book Event'}
+          </button>
+          
+          {isRegistered && !registrationLoading && (
+            <span style={{ color: 'green', fontSize: '0.9em' }}>
+              ✓ You are registered
+            </span>
           )}
           
           {registrationError && (
