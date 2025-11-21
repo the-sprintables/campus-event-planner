@@ -1,4 +1,4 @@
-# Viewing SQLite Database with DBeaver
+2# Viewing SQLite Database with DBeaver
 
 This guide explains how to view and interact with the SQLite database (`api.db`) using DBeaver, a free and open-source universal database tool.
 
