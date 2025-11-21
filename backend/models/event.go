@@ -113,7 +113,7 @@ func GetAllEvents() ([]Event, error) {
 		var imageData, color, priority, eventType sql.NullString
 		var price sql.NullFloat64
 		var dateTimeStr sql.NullString
-		err := rows.Scan(&event.ID, &event.Name, &event.Description, &event.Location, &dateTimeStr, &event.UserID, &imageData, &color, &price, &priority, &event.TicketsAvailable, &eventType)
+		err := rows.Scan(&event.ID, &event.Name, &event.Description, &event.Location, &dateTimeStr, &event.UserID, &imageData, &color, &price, &eventType, &priority, &event.TicketsAvailable)
 
 		if err != nil {
 			return nil, err
@@ -133,7 +133,7 @@ func GetEventByID(id int64) (*Event, error) {
 	var imageData, color, priority, eventType sql.NullString
 	var price sql.NullFloat64
 	var dateTimeStr sql.NullString
-	err := row.Scan(&event.ID, &event.Name, &event.Description, &event.Location, &dateTimeStr, &event.UserID, &imageData, &color, &price, &priority, &event.TicketsAvailable, &eventType)
+	err := row.Scan(&event.ID, &event.Name, &event.Description, &event.Location, &dateTimeStr, &event.UserID, &imageData, &color, &price, &eventType, &priority, &event.TicketsAvailable)
 	if err != nil {
 		return nil, err
 	}

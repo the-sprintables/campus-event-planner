@@ -104,8 +104,13 @@ body{
 
 /* Modal styles for event pop */
 .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.55);display:flex;align-items:center;justify-content:center;z-index:80}
-.modal-card{width:90%;max-width:900px;background:var(--card);padding:1rem;border-radius:12px;box-shadow:0 20px 60px rgba(2,6,23,0.4);border:1px solid rgba(15,23,42,0.06)}
+.modal-card{width:90%;max-width:900px;background:var(--card);padding:1rem;border-radius:12px;box-shadow:0 20px 60px rgba(2,6,23,0.4);border:1px solid rgba(15,23,42,0.06);color:#0f172a}
 .modal-card .details img{height:400px}
+.modal-card .details{color:#0f172a}
+.modal-card .booking-content{color:#0f172a}
+.modal-card h2,.modal-card h3,.modal-card h4{color:#0f172a}
+.modal-card p{color:#0f172a}
+.modal-card .meta{color:var(--muted)}
 .event-card .meta{color:var(--muted);font-size:0.85rem;margin-top:6px}
 
 /* Card visuals to mimic the attached design */
@@ -138,7 +143,10 @@ body{
 }
 
 /* Details panel */
-.details h3{margin-top:0}
+.details{color:#0f172a}
+.details h3{margin-top:0;color:#0f172a}
+.details h2{color:#0f172a}
+.details p{color:#0f172a}
 
 /* Responsive */
 @media (max-width:900px){

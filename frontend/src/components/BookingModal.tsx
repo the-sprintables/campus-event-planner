@@ -75,39 +75,39 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
         </button>
         
         <div className="booking-content">
-          <h2>Book Event</h2>
+          <h2 style={{ marginTop: 0, marginBottom: 24 }}>Book Event</h2>
           
           {/* Event summary */}
           <div className="event-summary" style={{ 
-            padding: '16px', 
+            padding: '20px', 
             backgroundColor: 'var(--accent)', 
             borderRadius: '8px', 
-            marginBottom: '20px' 
+            marginBottom: '28px' 
           }}>
-            <h3 style={{ margin: '0 0 8px 0' }}>{event.title}</h3>
-            <div className="meta" style={{ marginBottom: '8px' }}>
+            <h3 style={{ margin: '0 0 12px 0' }}>{event.title}</h3>
+            <div className="meta" style={{ marginBottom: '12px' }}>
               📅 {event.date}
               {event.location && ` • 📍 ${event.location}`}
             </div>
             {event.price !== undefined && (
-              <div style={{ fontWeight: 'bold', color: 'var(--primary)' }}>
+              <div style={{ fontWeight: 'bold', color: 'var(--primary)', marginBottom: '8px' }}>
                 💰 €{event.price.toFixed(2)}
               </div>
             )}
             {event.capacity && (
-              <div style={{ fontSize: '0.9em', color: 'var(--muted)', marginTop: '8px' }}>
+              <div style={{ fontSize: '0.9em', color: 'var(--muted)', marginTop: '12px' }}>
                 👥 {event.registrationCount || 0} / {event.capacity} registered
               </div>
             )}
           </div>
 
           {/* Booking details */}
-          <div className="booking-details" style={{ marginBottom: '20px' }}>
-            <h4>Booking Details</h4>
-            <p><strong>Email:</strong> {user?.email}</p>
+          <div className="booking-details" style={{ marginBottom: '28px' }}>
+            <h4 style={{ marginTop: 0, marginBottom: 16 }}>Booking Details</h4>
+            <p style={{ marginBottom: 20 }}><strong>Email:</strong> {user?.email}</p>
             
             {/* Ticket quantity selector */}
-            <div style={{ marginTop: '16px' }}>
+            <div style={{ marginTop: '24px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
                 Number of Tickets:
               </label>
@@ -177,7 +177,7 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
               </div>
               
               {event.capacity && (
-                <div style={{ fontSize: '0.8em', color: 'var(--muted)', marginTop: '4px' }}>
+                <div style={{ fontSize: '0.8em', color: 'var(--muted)', marginTop: '8px' }}>
                   Available tickets: {(event.capacity - (event.registrationCount || 0))}
                 </div>
               )}
@@ -186,8 +186,8 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
             {/* Total price calculation */}
             {event.price !== undefined && (
               <div style={{ 
-                marginTop: '16px', 
-                padding: '12px', 
+                marginTop: '24px', 
+                padding: '16px', 
                 backgroundColor: 'var(--accent)', 
                 borderRadius: '4px',
                 textAlign: 'center'
@@ -205,29 +205,30 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
           {/* Status messages */}
           {bookingSuccess && (
             <div className="success-message" style={{ 
-              padding: '20px', 
+              padding: '24px', 
               backgroundColor: '#d4edda', 
               color: '#155724', 
               borderRadius: '8px', 
-              marginBottom: '20px',
+              marginBottom: '28px',
+              marginTop: '24px',
               textAlign: 'center',
               border: '2px solid #c3e6cb',
               fontSize: '1.1em',
               fontWeight: 'bold'
             }}>
-              <div style={{ fontSize: '2em', marginBottom: '10px' }}>🎉</div>
+              <div style={{ fontSize: '2em', marginBottom: '12px' }}>🎉</div>
               <div>BOOKING CONFIRMED!</div>
-              <div style={{ fontSize: '0.9em', fontWeight: 'normal', marginTop: '8px' }}>
+              <div style={{ fontSize: '0.9em', fontWeight: 'normal', marginTop: '12px' }}>
                 {ticketQuantity === 1 ? '1 ticket' : `${ticketQuantity} tickets`} successfully reserved for {event?.title}
               </div>
-              <div style={{ fontSize: '0.8em', fontWeight: 'normal', marginTop: '8px', opacity: 0.8 }}>
+              <div style={{ fontSize: '0.8em', fontWeight: 'normal', marginTop: '12px', opacity: 0.8 }}>
                 This window will close automatically...
               </div>
             </div>
           )}
 
           {bookingError && (
-            <div className="error" style={{ marginBottom: '16px' }}>
+            <div className="error" style={{ marginBottom: '24px', marginTop: '24px' }}>
               {bookingError}
             </div>
           )}
@@ -238,7 +239,8 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
             gap: '12px', 
             justifyContent: 'flex-end',
             borderTop: '1px solid var(--border)',
-            paddingTop: '16px'
+            paddingTop: '24px',
+            marginTop: '24px'
           }}>
             <button 
               type="button" 
@@ -264,8 +266,8 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
           {/* Event full warning */}
           {isEventFull && (
             <div style={{ 
-              marginTop: '12px', 
-              padding: '8px', 
+              marginTop: '20px', 
+              padding: '12px', 
               backgroundColor: '#fff3cd', 
               color: '#856404', 
               borderRadius: '4px',

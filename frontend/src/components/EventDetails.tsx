@@ -69,7 +69,7 @@ export default function EventDetails({ event, onRegistrationChange }: EventDetai
     <div className="details">
       {/* cover image or color fallback */}
       {event.imageData && event.imageData.trim() !== "" ? (
-        <div style={{ marginBottom: 12 }}>
+        <div style={{ marginBottom: 24 }}>
           <img
             src={event.imageData}
             alt={event.title}
@@ -86,7 +86,7 @@ export default function EventDetails({ event, onRegistrationChange }: EventDetai
           style={{
             height: 200,
             borderRadius: 8,
-            marginBottom: 12,
+            marginBottom: 24,
             background:
               event.color && event.color.trim() !== ""
                 ? `linear-gradient(120deg, ${event.color}, #ffffff)`
@@ -95,16 +95,16 @@ export default function EventDetails({ event, onRegistrationChange }: EventDetai
         />
       )}
 
-      <h2>{event.title}</h2>
-      <div className="meta">
+      <h2 style={{ marginTop: 0, marginBottom: 12 }}>{event.title}</h2>
+      <div className="meta" style={{ marginBottom: 20 }}>
         {event.date}
         {event.location ? ` • ${event.location}` : ""}
       </div>
-      {event.description && <p>{event.description}</p>}
+      {event.description && <p style={{ marginBottom: 24, lineHeight: 1.6 }}>{event.description}</p>}
       
       {/* Registration info */}
       {event.capacity && (
-        <div className="registration-info" style={{ marginTop: 16, color: 'var(--muted)' }}>
+        <div className="registration-info" style={{ marginTop: 24, marginBottom: 20, color: 'var(--muted)' }}>
           {event.registrationCount !== undefined ? (
             <span>{event.registrationCount} / {event.capacity} registered</span>
           ) : (
@@ -115,7 +115,7 @@ export default function EventDetails({ event, onRegistrationChange }: EventDetai
 
       {/* Registration button */}
       {canRegister && (
-        <div className="registration-section" style={{ marginTop: 16 }}>
+        <div className="registration-section" style={{ marginTop: 24 }}>
           {checkingRegistration ? (
             <div style={{ color: 'var(--muted)' }}>Checking registration status...</div>
           ) : (
@@ -140,7 +140,7 @@ export default function EventDetails({ event, onRegistrationChange }: EventDetai
           )}
           
           {registrationError && (
-            <div className="error" style={{ marginTop: 8, fontSize: '0.9em' }}>
+            <div className="error" style={{ marginTop: 12, fontSize: '0.9em' }}>
               {registrationError}
             </div>
           )}
@@ -149,7 +149,7 @@ export default function EventDetails({ event, onRegistrationChange }: EventDetai
 
       {/* Show login prompt for guests */}
       {!user && (
-        <div style={{ marginTop: 16, padding: 12, backgroundColor: 'var(--accent)', borderRadius: 4 }}>
+        <div style={{ marginTop: 24, padding: 12, backgroundColor: 'var(--accent)', borderRadius: 4 }}>
           <p style={{ margin: 0, fontSize: '0.9em' }}>
             Please <a href="/login">login</a> to register for this event.
           </p>

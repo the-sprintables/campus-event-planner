@@ -173,6 +173,7 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
                   </button>
                 )}
               </div>
+            </div>
             ))
           )}
         </div>
