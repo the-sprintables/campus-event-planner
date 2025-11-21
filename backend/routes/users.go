@@ -4,7 +4,9 @@ import (
 	"event-planner/db"
 	"event-planner/models"
 	"event-planner/utils"
+	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -21,6 +23,17 @@ func signup(context *gin.Context) {
 
 	err = user.Save()
 	if err != nil {
+		// Log the actual error for debugging
+		log.Printf("Error saving user: %v", err)
+		
+		// Check if it's a duplicate email error (SQLite unique constraint)
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") || 
+		   strings.Contains(err.Error(), "duplicate") ||
+		   strings.Contains(err.Error(), "constraint") {
+			context.JSON(http.StatusConflict, gin.H{"message": "Email already exists"})
+			return
+		}
+		
 		context.JSON(http.StatusInternalServerError, gin.H{"message": "Could not save user"})
 		return
 	}
