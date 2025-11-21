@@ -14,4 +14,7 @@ export type Event = {
   eventType?: string
 
   ticketsAvailable: number;
+  capacity?: number // maximum number of registrants
+  registrationCount?: number // current number of registered users
+  isRegistered?: boolean // whether current user is registered
 }
