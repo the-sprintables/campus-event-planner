@@ -11,4 +11,7 @@ export type Event = {
   imageData?: string // base64 encoded image data
   color?: string // fallback background color when no image is provided
   priority?: EventPriority
+  capacity?: number // maximum number of registrants
+  registrationCount?: number // current number of registered users
+  isRegistered?: boolean // whether current user is registered
 }
