@@ -95,7 +95,8 @@ function backendToFrontendEvent(be: BackendEvent): Event {
     price: be.Price,
     priority:
       (be.Priority as "available" | "almost-full" | "full") || "available",
-    eventType: be.EventType,
+    // Parse eventType - can be comma-separated string or single string
+    eventType: be.EventType ? (be.EventType.includes(',') ? be.EventType.split(',').map(t => t.trim()) : be.EventType) : undefined,
     ticketsAvailable: be.TicketsAvailable ?? 0,
     capacity: be.TicketsAvailable, // Map TicketsAvailable to capacity
   };
@@ -117,17 +118,26 @@ function frontendToBackendEvent(
     dateTime = new Date().toISOString();
   }
 
+  // Ensure required fields are not undefined or empty
+  // Backend requires Name, Description, Location to be non-empty strings
+  const description = fe.description?.trim() || "";
+  const location = fe.location?.trim() || "";
+  const title = fe.title?.trim() || "";
+  
   return {
-    Name: fe.title,
-    Description: fe.description || "",
-    Location: fe.location || "",
+    Name: title,
+    Description: description,
+    Location: location,
     DateTime: dateTime,
     UserID: userId || 0,
     ImageData: fe.imageData || "",
     Color: fe.color || "",
     Price: fe.price,
     Priority: fe.priority || "available",
-    EventType: fe.eventType || '',
+    // Convert array to comma-separated string for backend
+    // Backend expects lowercase "eventType" in JSON
+    EventType: Array.isArray(fe.eventType) ? fe.eventType.join(',') : (fe.eventType || ''),
+    TicketsAvailable: fe.ticketsAvailable ?? 0,
   };
 }
 
@@ -313,6 +323,25 @@ export async function createEvent(
 
   try {
     const backendEvent = frontendToBackendEvent(event);
+    
+    // Create object with correct JSON field names for backend
+    const requestBody: any = {
+      Name: backendEvent.Name || "",
+      Description: backendEvent.Description || "",
+      Location: backendEvent.Location || "",
+      DateTime: backendEvent.DateTime,
+      UserID: backendEvent.UserID || 0,
+      ImageData: backendEvent.ImageData || "",
+      Color: backendEvent.Color || "",
+      Priority: backendEvent.Priority || "available",
+      TicketsAvailable: backendEvent.TicketsAvailable ?? 0,
+      eventType: backendEvent.EventType || "", // Backend expects lowercase "eventType"
+    };
+    
+    // Only include Price if it's defined (backend expects *float64, so null/undefined should be omitted)
+    if (backendEvent.Price !== undefined && backendEvent.Price !== null) {
+      requestBody.Price = backendEvent.Price;
+    }
 
     const response = await fetch(`${API_BASE_URL}/events`, {
       method: "POST",
@@ -320,7 +349,7 @@ export async function createEvent(
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(backendEvent),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -361,21 +390,68 @@ export async function updateEvent(
 
   try {
     const backendEvent = frontendToBackendEvent(event);
-    console.log('createEvent - backendEvent being sent:', JSON.stringify(backendEvent));
+    
+    // Create object with correct JSON field names for backend
+    // Backend expects all fields to match the Event struct exactly
+    const requestBody: any = {
+      Name: backendEvent.Name || "",
+      Description: backendEvent.Description || "",
+      Location: backendEvent.Location || "",
+      DateTime: backendEvent.DateTime,
+      UserID: backendEvent.UserID || 0, // Include UserID for binding (backend gets actual userId from token)
+      ImageData: backendEvent.ImageData || "",
+      Color: backendEvent.Color || "",
+      Priority: backendEvent.Priority || "available",
+      TicketsAvailable: backendEvent.TicketsAvailable ?? 0,
+      eventType: backendEvent.EventType || "", // Backend expects lowercase "eventType"
+    };
+    
+    // Only include Price if it's defined (backend expects *float64, so null/undefined should be omitted)
+    if (backendEvent.Price !== undefined && backendEvent.Price !== null) {
+      requestBody.Price = backendEvent.Price;
+    }
+    
+    // Validate required fields before sending
+    if (!requestBody.Name || !requestBody.Description || !requestBody.Location || !requestBody.DateTime) {
+      console.error('Missing required fields:', {
+        Name: requestBody.Name,
+        Description: requestBody.Description,
+        Location: requestBody.Location,
+        DateTime: requestBody.DateTime
+      });
+      return { ok: false, error: "Missing required fields: Name, Description, Location, or DateTime" };
+    }
+    
+    console.log('Update event request body:', JSON.stringify(requestBody, null, 2));
+    console.log('Update event ID:', id);
+    
     const response = await fetch(`${API_BASE_URL}/events/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(backendEvent),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
-      const errorMessage = await handleApiError(
+      // Try to get more detailed error information
+      let errorMessage = await handleApiError(
         response,
         "Failed to update event"
       );
+      
+      // Log response for debugging
+      try {
+        const errorData = await response.json();
+        console.error('Update event error response:', errorData);
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } catch (e) {
+        console.error('Could not parse error response');
+      }
+      
       return { ok: false, error: errorMessage };
     }
 

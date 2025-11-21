@@ -82,6 +82,34 @@ export default function EventDetails({ event, onRegistrationChange }: EventDetai
         />
       )}
 
+      {/* Event types */}
+      {event.eventType && (
+        <div style={{ 
+          marginTop: '16px',
+          marginBottom: '20px',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '8px'
+        }}>
+          {(Array.isArray(event.eventType) ? event.eventType : [event.eventType]).map((type, index) => (
+            <span
+              key={index}
+              style={{
+                display: 'inline-block',
+                padding: '6px 12px',
+                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                color: '#2563eb',
+                borderRadius: '12px',
+                fontSize: '0.85rem',
+                fontWeight: '600'
+              }}
+            >
+              {type}
+            </span>
+          ))}
+        </div>
+      )}
+
       <h2 style={{ marginTop: 0, marginBottom: 12 }}>{event.title}</h2>
       <div className="meta" style={{ marginBottom: 20 }}>
         {event.date}

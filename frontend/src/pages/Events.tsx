@@ -62,9 +62,12 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
       setLocalEvents(events)
     } else {
       // Filter events by selected types
-      const filtered = events.filter(event => 
-        event.eventType && selectedTypes.includes(event.eventType)
-      )
+      const filtered = events.filter(event => {
+        if (!event.eventType) return false;
+        // Handle both string and array formats
+        const eventTypes = Array.isArray(event.eventType) ? event.eventType : [event.eventType];
+        return eventTypes.some(type => selectedTypes.includes(type));
+      })
       setLocalEvents(filtered)
     }
   }, [selectedEventTypes, events])
@@ -310,6 +313,33 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
               )}
               <div className="title">{ev.title}</div>
               <div className="meta">{ev.date}{ev.location ? ` • ${ev.location}` : ''}</div>
+              {/* Event types */}
+              {ev.eventType && (
+                <div style={{ 
+                  marginTop: '8px', 
+                  marginBottom: '8px',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '6px'
+                }}>
+                  {(Array.isArray(ev.eventType) ? ev.eventType : [ev.eventType]).map((type, index) => (
+                    <span
+                      key={index}
+                      style={{
+                        display: 'inline-block',
+                        padding: '4px 10px',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        color: '#2563eb',
+                        borderRadius: '12px',
+                        fontSize: '0.75rem',
+                        fontWeight: '600'
+                      }}
+                    >
+                      {type}
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="price">{ev.price !== undefined ? `From €${ev.price.toFixed(2)}` : ''}</div>
               <div style={{marginTop:10, display: 'flex', gap: '8px'}}>
                 <button className="btn ghost" onClick={() => setSelected(ev)}>View</button>

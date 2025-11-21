@@ -11,7 +11,7 @@ export type Event = {
   imageData?: string // base64 encoded image data
   color?: string // fallback background color when no image is provided
   priority?: EventPriority
-  eventType?: string
+  eventType?: string | string[] // Can be single string (for backward compatibility) or array for multiple types
 
   ticketsAvailable: number;
   capacity?: number // maximum number of registrants
