@@ -2,34 +2,33 @@ package models
 
 import (
 	"database/sql"
+	"errors"
 	"event-planner/db"
 	"time"
 )
 
 type Event struct {
-	ID          int64     `json:"ID"`
-	Name        string    `json:"Name" binding:"required"`
-	Description string    `json:"Description" binding:"required"`
-	Location    string    `json:"Location" binding:"required"`
-	DateTime    time.Time `json:"DateTime" binding:"required"`
-	UserID      int64     `json:"UserID"`
-	ImageData   string    `json:"ImageData,omitempty"`
-	Color       string    `json:"Color,omitempty"`
-	Price       *float64  `json:"Price,omitempty"`
-	Priority    string    `json:"Priority,omitempty"`
+	ID               int64     `json:"ID"`
+	Name             string    `json:"Name" binding:"required"`
+	Description      string    `json:"Description" binding:"required"`
+	Location         string    `json:"Location" binding:"required"`
+	DateTime         time.Time `json:"DateTime" binding:"required"`
+	UserID           int64     `json:"UserID"`
+	ImageData        string    `json:"ImageData,omitempty"`
+	Color            string    `json:"Color,omitempty"`
+	Price            *float64  `json:"Price,omitempty"`
+	Priority         string    `json:"Priority,omitempty"`
+	TicketsAvailable int64     `json:"TicketsAvailable" binding:"required,gte=0"`
 }
 
 var events = []Event{}
 
-// parseDateTime parses a SQLite datetime string to time.Time
-// SQLite stores datetime as TEXT, so we try multiple formats
 func parseDateTime(dateTimeStr sql.NullString) time.Time {
 	if !dateTimeStr.Valid {
 		return time.Now()
 	}
 
 	dtStr := dateTimeStr.String
-	// Try parsing with timezone offset (handles both + and -)
 	if t, err := time.Parse("2006-01-02 15:04:05-07:00", dtStr); err == nil {
 		return t
 	}
@@ -51,11 +50,9 @@ func parseDateTime(dateTimeStr sql.NullString) time.Time {
 	if t, err := time.Parse("2006-01-02 15:04:05", dtStr); err == nil {
 		return t
 	}
-	// Fallback to current time if all parsing fails
 	return time.Now()
 }
 
-// populateNullableFields populates event nullable fields from SQL null types
 func populateNullableFields(event *Event, imageData, color, priority sql.NullString, price sql.NullFloat64) {
 	if imageData.Valid {
 		event.ImageData = imageData.String
@@ -71,7 +68,6 @@ func populateNullableFields(event *Event, imageData, color, priority sql.NullStr
 	}
 }
 
-// scanEventFromRow scans a database row into an Event struct
 func scanEventFromRow(event *Event, dateTimeStr sql.NullString, imageData, color, priority sql.NullString, price sql.NullFloat64) {
 	event.DateTime = parseDateTime(dateTimeStr)
 	populateNullableFields(event, imageData, color, priority, price)
@@ -79,8 +75,8 @@ func scanEventFromRow(event *Event, dateTimeStr sql.NullString, imageData, color
 
 func (e *Event) Save() error {
 	query := `
-	INSERT INTO events (name, description, location, dateTime, userID, imageData, color, price, priority)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	INSERT INTO events (name, description, location, dateTime, userID, imageData, color, price, priority, ticketsAvailable)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	stmt, err := db.DB.Prepare(query)
 	if err != nil {
@@ -88,7 +84,7 @@ func (e *Event) Save() error {
 	}
 
 	defer stmt.Close()
-	result, err := stmt.Exec(e.Name, e.Description, e.Location, e.DateTime, e.UserID, e.ImageData, e.Color, e.Price, e.Priority)
+	result, err := stmt.Exec(e.Name, e.Description, e.Location, e.DateTime, e.UserID, e.ImageData, e.Color, e.Price, e.Priority, e.TicketsAvailable)
 	if err != nil {
 		return err
 	}
@@ -99,8 +95,7 @@ func (e *Event) Save() error {
 }
 
 func GetAllEvents() ([]Event, error) {
-	// Explicitly list columns to ensure correct order
-	query := "SELECT id, name, description, location, dateTime, userID, imageData, color, price, priority FROM events"
+	query := "SELECT id, name, description, location, dateTime, userID, imageData, color, price, priority, ticketsAvailable FROM events"
 	rows, err := db.DB.Query(query)
 	if err != nil {
 		return nil, err
@@ -114,7 +109,7 @@ func GetAllEvents() ([]Event, error) {
 		var imageData, color, priority sql.NullString
 		var price sql.NullFloat64
 		var dateTimeStr sql.NullString
-		err := rows.Scan(&event.ID, &event.Name, &event.Description, &event.Location, &dateTimeStr, &event.UserID, &imageData, &color, &price, &priority)
+		err := rows.Scan(&event.ID, &event.Name, &event.Description, &event.Location, &dateTimeStr, &event.UserID, &imageData, &color, &price, &priority, &event.TicketsAvailable)
 
 		if err != nil {
 			return nil, err
@@ -127,15 +122,14 @@ func GetAllEvents() ([]Event, error) {
 }
 
 func GetEventByID(id int64) (*Event, error) {
-	// Explicitly list columns to ensure correct order
-	query := "SELECT id, name, description, location, dateTime, userID, imageData, color, price, priority FROM events WHERE id = ?"
+	query := "SELECT id, name, description, location, dateTime, userID, imageData, color, price, priority, ticketsAvailable FROM events WHERE id = ?"
 	row := db.DB.QueryRow(query, id)
 
 	var event Event
 	var imageData, color, priority sql.NullString
 	var price sql.NullFloat64
 	var dateTimeStr sql.NullString
-	err := row.Scan(&event.ID, &event.Name, &event.Description, &event.Location, &dateTimeStr, &event.UserID, &imageData, &color, &price, &priority)
+	err := row.Scan(&event.ID, &event.Name, &event.Description, &event.Location, &dateTimeStr, &event.UserID, &imageData, &color, &price, &priority, &event.TicketsAvailable)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +141,7 @@ func GetEventByID(id int64) (*Event, error) {
 func (event Event) Update() error {
 	query := `
 	UPDATE events
-	SET name = ?, description = ?, location = ?, dateTime = ?, imageData = ?, color = ?, price = ?, priority = ?
+	SET name = ?, description = ?, location = ?, dateTime = ?, imageData = ?, color = ?, price = ?, priority = ?, ticketsAvailable = ?
 	WHERE id = ?`
 
 	stmt, err := db.DB.Prepare(query)
@@ -158,7 +152,28 @@ func (event Event) Update() error {
 
 	defer stmt.Close()
 
-	_, err = stmt.Exec(event.Name, event.Description, event.Location, event.DateTime, event.ImageData, event.Color, event.Price, event.Priority, event.ID)
+	_, err = stmt.Exec(event.Name, event.Description, event.Location, event.DateTime, event.ImageData, event.Color, event.Price, event.Priority, event.TicketsAvailable, event.ID)
+	return err
+}
+
+func UpdateEventTickets(eventID int64, ticketsAvailable int64) error {
+	if ticketsAvailable < 0 {
+		return errors.New("ticket count cannot be negative")
+	}
+
+	query := `
+	UPDATE events
+	SET ticketsAvailable = ?
+	WHERE id = ?`
+
+	stmt, err := db.DB.Prepare(query)
+	if err != nil {
+		return err
+	}
+
+	defer stmt.Close()
+
+	_, err = stmt.Exec(ticketsAvailable, eventID)
 	return err
 }
 
@@ -175,6 +190,20 @@ func (event Event) Delete() error {
 }
 
 func (e Event) Register(userID int64) error {
+	checkQuery := `
+	SELECT COUNT(*) FROM registrations
+	WHERE event_id = ? AND user_id = ?`
+
+	var count int
+	err := db.DB.QueryRow(checkQuery, e.ID, userID).Scan(&count)
+	if err != nil {
+		return err
+	}
+
+	if count > 0 {
+		return errors.New("User already registered for this event")
+	}
+
 	query := `
 	INSERT INTO registrations (event_id, user_id)
 	VALUES (?, ?)`
@@ -191,6 +220,20 @@ func (e Event) Register(userID int64) error {
 }
 
 func (e Event) CancelRegistration(userID int64) error {
+	checkQuery := `
+	SELECT COUNT(*) FROM registrations
+	WHERE event_id = ? AND user_id = ?`
+
+	var count int
+	err := db.DB.QueryRow(checkQuery, e.ID, userID).Scan(&count)
+	if err != nil {
+		return err
+	}
+
+	if count == 0 {
+		return errors.New("Event does not exist or has already been cancelled")
+	}
+
 	query := `
 	DELETE FROM registrations
 	WHERE event_id = ? AND user_id = ?`
