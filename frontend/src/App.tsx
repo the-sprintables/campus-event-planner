@@ -13,10 +13,13 @@ import RequireAdmin from './components/RequireAdmin'
 import { currentUser, logout } from './auth'
 import { useNavigate } from 'react-router-dom'
 import * as api from './api'
+import Feed from './pages/Feed'
+import Footer from './pages/Footer'
 
 export default function App() {
   const navigate = useNavigate()
   const user = currentUser()
+  
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -26,13 +29,11 @@ export default function App() {
     navigate('/login')
   }
 
-  // Fetch events from backend API
   useEffect(() => {
     async function fetchEvents() {
       setLoading(true)
       setError(null)
       
-      // First check if backend is reachable
       const isBackendReachable = await api.checkBackendHealth()
       if (!isBackendReachable) {
         setError('Cannot connect to backend server. Please make sure the backend is running on http://localhost:8080')
@@ -42,11 +43,11 @@ export default function App() {
       
       const result = await api.getEvents()
       if (result.ok) {
-        // Ensure events is always an array, never null or undefined
+        
         setEvents(result.events || [])
       } else {
         setError(result.error || 'Failed to load events')
-        setEvents([]) // Set empty array on error to prevent null issues
+        setEvents([])
       }
       setLoading(false)
     }
@@ -86,9 +87,9 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <div className="app bg-white flex flex-col min-h-screen">
       <header>
-        <h1> Sprintables Campus Event Planner</h1>
+        <Link to="/">The Sprintables!</Link>
         <nav>
           <Link to="/">View events</Link> |
           {user?.role === 'admin' && (
@@ -110,7 +111,7 @@ export default function App() {
           )}
         </nav>
       </header>
-      <main>
+      <main className='flex-1'>
         {loading && <div>Loading events...</div>}
         {error && <div className="error">{error}</div>}
         <Routes>
@@ -126,8 +127,11 @@ export default function App() {
           )} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/feed" element={<Feed />} />
         </Routes>
+        
       </main>
+      <Footer />
     </div>
   )
 }

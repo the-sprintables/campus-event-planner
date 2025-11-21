@@ -4,12 +4,16 @@ import BookingModal from '../components/BookingModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { Event } from '../types'
 import { currentUser } from '../auth'
+import { unregisterFromEvent } from '../api'
 
-function getPriorityLabel(priority: string = 'available') {
+function getPriorityLabel(priority: string = "available") {
   switch (priority) {
-    case 'full': return 'Full'
-    case 'almost-full': return 'Almost Full'
-    default: return 'Available'
+    case "full":
+      return "Full";
+    case "almost-full":
+      return "Almost Full";
+    default:
+      return "Available";
   }
 }
 
@@ -25,13 +29,70 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
   const [localEvents, setLocalEvents] = useState<Event[]>(events)
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
   const [eventToCancel, setEventToCancel] = useState<string | null>(null)
+  const [showFilter, setShowFilter] = useState(false)
+  const [selectedEventTypes, setSelectedEventTypes] = useState<Record<string, boolean>>({})
   
   const user = currentUser()
+  
+  // Predefined list of event types (same as in Feed.tsx and EventForm.tsx)
+  const eventTypes = [
+    "Sports & Fitness",
+    "Music & Entertainment",
+    "Parties & Social",
+    "Business & Professional",
+    "Education & Learning",
+    "Arts & Culture",
+    "Community & Charity",
+    "Food & Drink",
+    "Travel & Outdoors",
+    "Health & Wellness",
+  ]
 
   // Update local events when props change
   useEffect(() => {
     setLocalEvents(events)
   }, [events])
+  
+  // Filter events based on selected event types
+  useEffect(() => {
+    const selectedTypes = Object.keys(selectedEventTypes).filter(type => selectedEventTypes[type])
+    
+    if (selectedTypes.length === 0) {
+      // No filters selected, show all events
+      setLocalEvents(events)
+    } else {
+      // Filter events by selected types
+      const filtered = events.filter(event => {
+        if (!event.eventType) return false;
+        // Handle both string and array formats
+        const eventTypes = Array.isArray(event.eventType) ? event.eventType : [event.eventType];
+        return eventTypes.some(type => selectedTypes.includes(type));
+      })
+      setLocalEvents(filtered)
+    }
+  }, [selectedEventTypes, events])
+  
+  // Close filter dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (showFilter && !target.closest('[data-filter-container]')) {
+        setShowFilter(false)
+      }
+    }
+    
+    if (showFilter) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showFilter])
+  
+  const toggleEventType = (eventType: string) => {
+    setSelectedEventTypes(prev => ({
+      ...prev,
+      [eventType]: !prev[eventType]
+    }))
+  }
 
   const handleRegistrationChange = (eventId: string, isRegistered: boolean) => {
     // Update the selected event's registration status
@@ -44,7 +105,16 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
           : undefined
       }
       setSelected(updatedEvent)
-      onEventUpdate?.(updatedEvent)
+      
+      // Also update local events list
+      setLocalEvents(prevEvents => 
+        prevEvents.map(event => 
+          event.id === eventId ? updatedEvent : event
+        )
+      )
+      
+      // Note: We don't call onEventUpdate here because that's for updating event details,
+      // not for managing registrations. Registration changes are handled via the API directly.
     }
   }
 
@@ -67,16 +137,17 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
       )
     )
     
-    // Also notify parent component
-    const updatedEvent = localEvents.find(e => e.id === eventId)
-    if (updatedEvent) {
-      const newEvent = {
-        ...updatedEvent,
+    // Update selected event if it's the one being booked
+    if (selected && selected.id === eventId) {
+      setSelected({
+        ...selected,
         isRegistered: true,
-        registrationCount: (updatedEvent.registrationCount || 0) + 1
-      }
-      onEventUpdate?.(newEvent)
+        registrationCount: (selected.registrationCount || 0) + 1
+      })
     }
+    
+    // Note: We don't call onEventUpdate here because that's for updating event details,
+    // not for managing registrations. Registration changes are handled via the API directly.
   }
 
   const handleCancelBookingClick = (eventId: string) => {
@@ -84,36 +155,51 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
     setCancelConfirmOpen(true)
   }
 
-  const handleCancelBooking = () => {
+  const handleCancelBooking = async () => {
     if (!eventToCancel) return
     
-    // Update the local events state
-    setLocalEvents(prevEvents => 
-      prevEvents.map(event => 
-        event.id === eventToCancel 
-          ? {
-              ...event,
-              isRegistered: false,
-              registrationCount: Math.max(0, (event.registrationCount || 1) - 1)
-            }
-          : event
-      )
-    )
-    
-    // Also notify parent component
-    const updatedEvent = localEvents.find(e => e.id === eventToCancel)
-    if (updatedEvent) {
-      const newEvent = {
-        ...updatedEvent,
-        isRegistered: false,
-        registrationCount: Math.max(0, (updatedEvent.registrationCount || 1) - 1)
+    try {
+      // Call API to cancel registration
+      const result = await unregisterFromEvent(eventToCancel)
+      
+      if (result.ok) {
+        // Update the local events state
+        setLocalEvents(prevEvents => 
+          prevEvents.map(event => 
+            event.id === eventToCancel 
+              ? {
+                  ...event,
+                  isRegistered: false,
+                  registrationCount: Math.max(0, (event.registrationCount || 1) - 1)
+                }
+              : event
+          )
+        )
+        
+        // Update selected event if it's the one being canceled
+        if (selected && selected.id === eventToCancel) {
+          setSelected({
+            ...selected,
+            isRegistered: false,
+            registrationCount: Math.max(0, (selected.registrationCount || 1) - 1)
+          })
+        }
+        
+        // Note: We don't call onEventUpdate here because that's for updating event details,
+        // not for managing registrations. Registration changes are handled via the API directly.
+        
+        // Close confirmation dialog
+        setCancelConfirmOpen(false)
+        setEventToCancel(null)
+      } else {
+        // Show error (you might want to add error state handling here)
+        console.error('Failed to cancel booking:', result.error)
+        alert(result.error || 'Failed to cancel booking')
       }
-      onEventUpdate?.(newEvent)
+    } catch (error) {
+      console.error('Error canceling booking:', error)
+      alert('Network error occurred while canceling booking')
     }
-    
-    // Close confirmation dialog
-    setCancelConfirmOpen(false)
-    setEventToCancel(null)
   }
 
   const handleCancelConfirmClose = () => {
@@ -130,10 +216,74 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
   if (!localEvents || !Array.isArray(localEvents)) {
     return <div className="events-page">No events available.</div>
   }
-  
+
   return (
-    <div className="events-page">
-      <section className="left">
+    <div className="events-page mb-20">
+      <section className="left px-8 my-8">
+        {/* Filter button and filter panel */}
+        <div data-filter-container style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px', position: 'relative' }}>
+          <button
+            className="btn ghost"
+            onClick={() => setShowFilter(!showFilter)}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            🔍 Filter
+          </button>
+          
+          {showFilter && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              marginTop: '8px',
+              background: 'white',
+              border: '1px solid rgba(15,23,42,0.1)',
+              borderRadius: '8px',
+              padding: '16px',
+              boxShadow: '0 8px 30px rgba(15,23,42,0.1)',
+              zIndex: 100,
+              minWidth: '200px'
+            }}>
+              <h4 style={{ margin: '0 0 12px 0', fontSize: '1rem', fontWeight: 'bold' }}>Filter by Event Type</h4>
+              {eventTypes.length === 0 ? (
+                <p style={{ color: 'var(--muted)', fontSize: '0.9em' }}>No event types available</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {eventTypes.map(type => (
+                    <label
+                      key={type}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        cursor: 'pointer',
+                        padding: '4px 0'
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedEventTypes[type] || false}
+                        onChange={() => toggleEventType(type)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      <span>{type}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {Object.keys(selectedEventTypes).some(type => selectedEventTypes[type]) && (
+                <button
+                  className="btn ghost"
+                  onClick={() => setSelectedEventTypes({})}
+                  style={{ marginTop: '12px', width: '100%', fontSize: '0.9em' }}
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        
         <div className="view-grid">
           {localEvents.length === 0 ? (
             <div className="empty">No events planned yet.</div>
@@ -148,9 +298,48 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
                   : { background: ev.color && ev.color.trim() !== '' ? `linear-gradient(120deg, ${ev.color}, #ffffff)` : 'linear-gradient(120deg, #fef3c7, #ffffff)' }
                 }
               />
-              <div className="badge">{getPriorityLabel(ev.priority)}</div>
+              {(ev.capacity !== undefined || ev.ticketsAvailable !== undefined) && (
+                <div className="badge" style={{ 
+                  marginTop: '12px', 
+                  marginBottom: '12px', 
+                  padding: '10px 16px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  lineHeight: '1.2'
+                }}>
+                  {Math.max(0, (ev.capacity ?? ev.ticketsAvailable ?? 0) - (ev.registrationCount || 0))} tickets left
+                </div>
+              )}
               <div className="title">{ev.title}</div>
               <div className="meta">{ev.date}{ev.location ? ` • ${ev.location}` : ''}</div>
+              {/* Event types */}
+              {ev.eventType && (
+                <div style={{ 
+                  marginTop: '8px', 
+                  marginBottom: '8px',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '6px'
+                }}>
+                  {(Array.isArray(ev.eventType) ? ev.eventType : [ev.eventType]).map((type, index) => (
+                    <span
+                      key={index}
+                      style={{
+                        display: 'inline-block',
+                        padding: '4px 10px',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        color: '#2563eb',
+                        borderRadius: '12px',
+                        fontSize: '0.75rem',
+                        fontWeight: '600'
+                      }}
+                    >
+                      {type}
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="price">{ev.price !== undefined ? `From €${ev.price.toFixed(2)}` : ''}</div>
               <div style={{marginTop:10, display: 'flex', gap: '8px'}}>
                 <button className="btn ghost" onClick={() => setSelected(ev)}>View</button>
@@ -179,12 +368,15 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
       {/* Modal popup for selected event */}
       {selected && (
         <div className="modal-backdrop" onClick={() => setSelected(null)}>
-          <div className="modal-card" onClick={e => e.stopPropagation()}>
-            <button className="btn ghost" style={{ float: 'right' }} onClick={() => setSelected(null)}>Close</button>
-            <EventDetails 
-              event={selected} 
-              onRegistrationChange={handleRegistrationChange}
-            />
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="btn ghost"
+              style={{ float: "right" }}
+              onClick={() => setSelected(null)}
+            >
+              Close
+            </button>
+            <EventDetails event={selected} />
           </div>
         </div>
       )}
@@ -213,5 +405,5 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
         }}
       />
     </div>
-  )
+  );
 }

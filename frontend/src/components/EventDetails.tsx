@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Event } from '../types'
-import { registerForEvent, unregisterFromEvent, checkEventRegistration } from '../api'
+import { registerForEvent, unregisterFromEvent } from '../api'
 import { currentUser } from '../auth'
 
 interface EventDetailsProps {
@@ -9,31 +9,18 @@ interface EventDetailsProps {
 }
 
 export default function EventDetails({ event, onRegistrationChange }: EventDetailsProps) {
-  const [isRegistered, setIsRegistered] = useState<boolean>(false)
+  const [isRegistered, setIsRegistered] = useState<boolean>(event?.isRegistered || false)
   const [registrationLoading, setRegistrationLoading] = useState<boolean>(false)
   const [registrationError, setRegistrationError] = useState<string>('')
-  const [checkingRegistration, setCheckingRegistration] = useState<boolean>(false)
   
   const user = currentUser()
 
-  // Check registration status when component mounts or event changes
+  // Update isRegistered when event changes
   useEffect(() => {
-    if (!event || !user) return
-
-    const checkRegistrationStatus = async () => {
-      setCheckingRegistration(true)
-      const result = await checkEventRegistration(event.id)
-      if (result.ok && result.data) {
-        setIsRegistered(result.data.isRegistered)
-      } else {
-        // If we can't check registration status, fall back to event property
-        setIsRegistered(event.isRegistered || false)
-      }
-      setCheckingRegistration(false)
+    if (event) {
+      setIsRegistered(event.isRegistered || false)
     }
-
-    checkRegistrationStatus()
-  }, [event, user])
+  }, [event])
 
   const handleRegistration = async () => {
     if (!event || !user) return
@@ -68,21 +55,71 @@ export default function EventDetails({ event, onRegistrationChange }: EventDetai
   return (
     <div className="details">
       {/* cover image or color fallback */}
-      {event.imageData && event.imageData.trim() !== '' ? (
-        <div style={{ marginBottom: 12 }}>
-          <img src={event.imageData} alt={event.title} style={{ width: '100%', height: 300, objectFit: 'cover', borderRadius: 8 }} />
+      {event.imageData && event.imageData.trim() !== "" ? (
+        <div style={{ marginBottom: 24 }}>
+          <img
+            src={event.imageData}
+            alt={event.title}
+            style={{
+              width: "100%",
+              height: 300,
+              objectFit: "cover",
+              borderRadius: 8,
+            }}
+          />
         </div>
       ) : (
-        <div style={{ height: 200, borderRadius: 8, marginBottom: 12, background: event.color && event.color.trim() !== '' ? `linear-gradient(120deg, ${event.color}, #ffffff)` : 'linear-gradient(120deg, #fef3c7, #ffffff)'}} />
+        <div
+          style={{
+            height: 200,
+            borderRadius: 8,
+            marginBottom: 24,
+            background:
+              event.color && event.color.trim() !== ""
+                ? `linear-gradient(120deg, ${event.color}, #ffffff)`
+                : "linear-gradient(120deg, #fef3c7, #ffffff)",
+          }}
+        />
       )}
 
-      <h2>{event.title}</h2>
-      <div className="meta">{event.date}{event.location ? ` • ${event.location}` : ''}</div>
-      {event.description && <p>{event.description}</p>}
+      {/* Event types */}
+      {event.eventType && (
+        <div style={{ 
+          marginTop: '16px',
+          marginBottom: '20px',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '8px'
+        }}>
+          {(Array.isArray(event.eventType) ? event.eventType : [event.eventType]).map((type, index) => (
+            <span
+              key={index}
+              style={{
+                display: 'inline-block',
+                padding: '6px 12px',
+                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                color: '#2563eb',
+                borderRadius: '12px',
+                fontSize: '0.85rem',
+                fontWeight: '600'
+              }}
+            >
+              {type}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <h2 style={{ marginTop: 0, marginBottom: 12 }}>{event.title}</h2>
+      <div className="meta" style={{ marginBottom: 20 }}>
+        {event.date}
+        {event.location ? ` • ${event.location}` : ""}
+      </div>
+      {event.description && <p style={{ marginBottom: 24, lineHeight: 1.6 }}>{event.description}</p>}
       
       {/* Registration info */}
       {event.capacity && (
-        <div className="registration-info" style={{ marginTop: 16, color: 'var(--muted)' }}>
+        <div className="registration-info" style={{ marginTop: 24, marginBottom: 20, color: 'var(--muted)' }}>
           {event.registrationCount !== undefined ? (
             <span>{event.registrationCount} / {event.capacity} registered</span>
           ) : (
@@ -93,32 +130,31 @@ export default function EventDetails({ event, onRegistrationChange }: EventDetai
 
       {/* Registration button */}
       {canRegister && (
-        <div className="registration-section" style={{ marginTop: 16 }}>
-          {checkingRegistration ? (
-            <div style={{ color: 'var(--muted)' }}>Checking registration status...</div>
-          ) : (
-            <>
-              <button 
-                className={isRegistered ? "btn ghost" : "btn"}
-                onClick={handleRegistration}
-                disabled={registrationLoading || (isEventFull && !isRegistered)}
-                style={{ marginRight: 8 }}
-              >
-                {registrationLoading ? 'Processing...' : 
-                 isRegistered ? 'Unregister' : 
-                 isEventFull ? 'Event Full' : 'Register'}
-              </button>
-              
-              {isRegistered && (
-                <span style={{ color: 'green', fontSize: '0.9em' }}>
-                  ✓ You are registered
-                </span>
-              )}
-            </>
+        <div className="registration-section" style={{ marginTop: 24 }}>
+          <button 
+            className={isRegistered ? "btn ghost" : "btn"}
+            onClick={handleRegistration}
+            disabled={registrationLoading || (isEventFull && !isRegistered)}
+            style={isRegistered ? {
+              backgroundColor: '#dc3545',
+              borderColor: '#dc3545',
+              color: 'white',
+              marginRight: 8
+            } : { marginRight: 8 }}
+          >
+            {registrationLoading ? 'Processing...' : 
+             isRegistered ? 'Cancel Booking' : 
+             isEventFull ? 'Event Full' : 'Book Event'}
+          </button>
+          
+          {isRegistered && !registrationLoading && (
+            <span style={{ color: 'green', fontSize: '0.9em' }}>
+              ✓ You are registered
+            </span>
           )}
           
           {registrationError && (
-            <div className="error" style={{ marginTop: 8, fontSize: '0.9em' }}>
+            <div className="error" style={{ marginTop: 12, fontSize: '0.9em' }}>
               {registrationError}
             </div>
           )}
@@ -127,12 +163,12 @@ export default function EventDetails({ event, onRegistrationChange }: EventDetai
 
       {/* Show login prompt for guests */}
       {!user && (
-        <div style={{ marginTop: 16, padding: 12, backgroundColor: 'var(--accent)', borderRadius: 4 }}>
+        <div style={{ marginTop: 24, padding: 12, backgroundColor: 'var(--accent)', borderRadius: 4 }}>
           <p style={{ margin: 0, fontSize: '0.9em' }}>
             Please <a href="/login">login</a> to register for this event.
           </p>
         </div>
       )}
     </div>
-  )
+  );
 }

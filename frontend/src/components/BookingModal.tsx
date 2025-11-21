@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Event } from '../types'
-import { currentUser } from '../auth'
+import { currentUser, logout } from '../auth'
+import { registerForEvent, getAuthTokenFromStorage } from '../api'
 
 interface BookingModalProps {
   event: Event | null
@@ -19,8 +20,18 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
 
   if (!isOpen || !event) return null
 
-  const handleBookEvent = () => {
-    if (!event || !user) return
+  const handleBookEvent = async () => {
+    if (!event || !user) {
+      setBookingError('You must be logged in to book an event')
+      return
+    }
+
+    // Check if token exists
+    const token = getAuthTokenFromStorage()
+    if (!token) {
+      setBookingError('Authentication required. Please log in again.')
+      return
+    }
 
     // Validate ticket quantity
     const availableTickets = (event.capacity || 10) - (event.registrationCount || 0)
@@ -37,21 +48,41 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
     setIsBooking(true)
     setBookingError('')
 
-    // Simulate booking process with a short delay for better UX
-    setTimeout(() => {
-      setBookingSuccess(true)
+    try {
+      // Register for the event (for now, we'll register once per ticket quantity)
+      // Note: The backend currently supports one registration per user, so we'll register once
+      // If you need multiple tickets per registration, the backend would need to support that
+      const result = await registerForEvent(event.id)
+      
+      if (result.ok) {
+        setBookingSuccess(true)
+        setIsBooking(false)
+        
+        // Notify parent of successful booking
+        onBookingSuccess(event.id)
+        
+        // Auto close after 3 seconds to give user time to see confirmation
+        setTimeout(() => {
+          setBookingSuccess(false)
+          setTicketQuantity(1) // Reset quantity
+          onClose()
+        }, 3000)
+      } else {
+        const errorMsg = result.error || 'Failed to book event'
+        // Check if it's an authentication error
+        if (errorMsg.includes('authorization') || errorMsg.includes('authorized') || errorMsg.includes('Authentication') || errorMsg.includes('Invalid/No authorization token')) {
+          // Clear the session since token is invalid
+          logout()
+          setBookingError('Your session has expired. Please log in again to book this event.')
+        } else {
+          setBookingError(errorMsg)
+        }
+        setIsBooking(false)
+      }
+    } catch (error) {
+      setBookingError('Network error occurred while booking. Please check your connection and try again.')
       setIsBooking(false)
-      
-      // Simulate updating event registration count
-      onBookingSuccess(event.id)
-      
-      // Auto close after 3 seconds to give user time to see confirmation
-      setTimeout(() => {
-        setBookingSuccess(false)
-        setTicketQuantity(1) // Reset quantity
-        onClose()
-      }, 3000)
-    }, 1000) // 1 second delay to simulate processing
+    }
   }
 
   const handleClose = () => {
@@ -75,39 +106,39 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
         </button>
         
         <div className="booking-content">
-          <h2>Book Event</h2>
+          <h2 style={{ marginTop: 0, marginBottom: 24 }}>Book Event</h2>
           
           {/* Event summary */}
           <div className="event-summary" style={{ 
-            padding: '16px', 
+            padding: '20px', 
             backgroundColor: 'var(--accent)', 
             borderRadius: '8px', 
-            marginBottom: '20px' 
+            marginBottom: '28px' 
           }}>
-            <h3 style={{ margin: '0 0 8px 0' }}>{event.title}</h3>
-            <div className="meta" style={{ marginBottom: '8px' }}>
+            <h3 style={{ margin: '0 0 12px 0' }}>{event.title}</h3>
+            <div className="meta" style={{ marginBottom: '12px' }}>
               📅 {event.date}
               {event.location && ` • 📍 ${event.location}`}
             </div>
             {event.price !== undefined && (
-              <div style={{ fontWeight: 'bold', color: 'var(--primary)' }}>
+              <div style={{ fontWeight: 'bold', color: 'var(--primary)', marginBottom: '8px' }}>
                 💰 €{event.price.toFixed(2)}
               </div>
             )}
             {event.capacity && (
-              <div style={{ fontSize: '0.9em', color: 'var(--muted)', marginTop: '8px' }}>
+              <div style={{ fontSize: '0.9em', color: 'var(--muted)', marginTop: '12px' }}>
                 👥 {event.registrationCount || 0} / {event.capacity} registered
               </div>
             )}
           </div>
 
           {/* Booking details */}
-          <div className="booking-details" style={{ marginBottom: '20px' }}>
-            <h4>Booking Details</h4>
-            <p><strong>Email:</strong> {user?.email}</p>
+          <div className="booking-details" style={{ marginBottom: '28px' }}>
+            <h4 style={{ marginTop: 0, marginBottom: 16 }}>Booking Details</h4>
+            <p style={{ marginBottom: 20 }}><strong>Email:</strong> {user?.email}</p>
             
             {/* Ticket quantity selector */}
-            <div style={{ marginTop: '16px' }}>
+            <div style={{ marginTop: '24px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
                 Number of Tickets:
               </label>
@@ -177,7 +208,7 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
               </div>
               
               {event.capacity && (
-                <div style={{ fontSize: '0.8em', color: 'var(--muted)', marginTop: '4px' }}>
+                <div style={{ fontSize: '0.8em', color: 'var(--muted)', marginTop: '8px' }}>
                   Available tickets: {(event.capacity - (event.registrationCount || 0))}
                 </div>
               )}
@@ -186,8 +217,8 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
             {/* Total price calculation */}
             {event.price !== undefined && (
               <div style={{ 
-                marginTop: '16px', 
-                padding: '12px', 
+                marginTop: '24px', 
+                padding: '16px', 
                 backgroundColor: 'var(--accent)', 
                 borderRadius: '4px',
                 textAlign: 'center'
@@ -205,29 +236,30 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
           {/* Status messages */}
           {bookingSuccess && (
             <div className="success-message" style={{ 
-              padding: '20px', 
+              padding: '24px', 
               backgroundColor: '#d4edda', 
               color: '#155724', 
               borderRadius: '8px', 
-              marginBottom: '20px',
+              marginBottom: '28px',
+              marginTop: '24px',
               textAlign: 'center',
               border: '2px solid #c3e6cb',
               fontSize: '1.1em',
               fontWeight: 'bold'
             }}>
-              <div style={{ fontSize: '2em', marginBottom: '10px' }}>🎉</div>
+              <div style={{ fontSize: '2em', marginBottom: '12px' }}>🎉</div>
               <div>BOOKING CONFIRMED!</div>
-              <div style={{ fontSize: '0.9em', fontWeight: 'normal', marginTop: '8px' }}>
+              <div style={{ fontSize: '0.9em', fontWeight: 'normal', marginTop: '12px' }}>
                 {ticketQuantity === 1 ? '1 ticket' : `${ticketQuantity} tickets`} successfully reserved for {event?.title}
               </div>
-              <div style={{ fontSize: '0.8em', fontWeight: 'normal', marginTop: '8px', opacity: 0.8 }}>
+              <div style={{ fontSize: '0.8em', fontWeight: 'normal', marginTop: '12px', opacity: 0.8 }}>
                 This window will close automatically...
               </div>
             </div>
           )}
 
           {bookingError && (
-            <div className="error" style={{ marginBottom: '16px' }}>
+            <div className="error" style={{ marginBottom: '24px', marginTop: '24px' }}>
               {bookingError}
             </div>
           )}
@@ -238,7 +270,8 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
             gap: '12px', 
             justifyContent: 'flex-end',
             borderTop: '1px solid var(--border)',
-            paddingTop: '16px'
+            paddingTop: '24px',
+            marginTop: '24px'
           }}>
             <button 
               type="button" 
@@ -264,8 +297,8 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
           {/* Event full warning */}
           {isEventFull && (
             <div style={{ 
-              marginTop: '12px', 
-              padding: '8px', 
+              marginTop: '20px', 
+              padding: '12px', 
               backgroundColor: '#fff3cd', 
               color: '#856404', 
               borderRadius: '4px',
