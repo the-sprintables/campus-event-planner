@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import EventDetails from '../components/EventDetails'
 import BookingModal from '../components/BookingModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { Event } from '../types'
 import { currentUser } from '../auth'
-import { unregisterFromEvent } from '../api'
+import { unregisterFromEvent, checkEventRegistration } from '../api'
 
 function getPriorityLabel(priority: string = "available") {
   switch (priority) {
@@ -31,6 +31,8 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
   const [eventToCancel, setEventToCancel] = useState<string | null>(null)
   const [showFilter, setShowFilter] = useState(false)
   const [selectedEventTypes, setSelectedEventTypes] = useState<Record<string, boolean>>({})
+  const checkedEventIdsRef = useRef<Set<string>>(new Set())
+  const lastCheckedEventIdsRef = useRef<string>('')
   
   const user = currentUser()
   
@@ -52,6 +54,66 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
   useEffect(() => {
     setLocalEvents(events)
   }, [events])
+  
+  // Check registration status for all events when they're loaded
+  useEffect(() => {
+    async function checkRegistrations() {
+      if (!user || user.role === 'admin') {
+        // Admins don't need registration status, and unauthenticated users can't register
+        return
+      }
+      
+      // Get current event IDs as a sorted string for comparison
+      const currentEventIdsString = events.map(e => e.id).sort().join(',')
+      
+      // Check if we've already checked these exact events
+      if (currentEventIdsString === lastCheckedEventIdsRef.current && currentEventIdsString !== '') {
+        // Already checked these events, skip
+        return
+      }
+      
+      // Only check events we haven't checked yet
+      const eventsToCheck = events.filter(event => !checkedEventIdsRef.current.has(event.id))
+      
+      if (eventsToCheck.length === 0 && currentEventIdsString === lastCheckedEventIdsRef.current) {
+        // All events already checked and no new events
+        return
+      }
+      
+      // Check registration status for new events in parallel
+      const registrationChecks = eventsToCheck.map(async (event) => {
+        const result = await checkEventRegistration(event.id)
+        if (result.ok && result.data) {
+          return { eventId: event.id, isRegistered: result.data.isRegistered }
+        }
+        return { eventId: event.id, isRegistered: false }
+      })
+      
+      const results = await Promise.all(registrationChecks)
+      
+      // Mark these events as checked
+      eventsToCheck.forEach(event => checkedEventIdsRef.current.add(event.id))
+      
+      // Update the last checked event IDs string
+      lastCheckedEventIdsRef.current = currentEventIdsString
+      
+      // Update local events with registration status
+      setLocalEvents(prevEvents => 
+        prevEvents.map(event => {
+          const registrationResult = results.find(r => r.eventId === event.id)
+          if (registrationResult) {
+            return { ...event, isRegistered: registrationResult.isRegistered }
+          }
+          // If event was already checked before, preserve its isRegistered status
+          return event
+        })
+      )
+    }
+    
+    if (events.length > 0) {
+      checkRegistrations()
+    }
+  }, [events, user])
   
   // Filter events based on selected event types
   useEffect(() => {

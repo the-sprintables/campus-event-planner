@@ -253,3 +253,17 @@ func (e Event) CancelRegistration(userID int64) error {
 	_, err = stmt.Exec(e.ID, userID)
 	return err
 }
+
+func IsUserRegisteredForEvent(eventID int64, userID int64) (bool, error) {
+	query := `
+	SELECT COUNT(*) FROM registrations
+	WHERE event_id = ? AND user_id = ?`
+
+	var count int
+	err := db.DB.QueryRow(query, eventID, userID).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
