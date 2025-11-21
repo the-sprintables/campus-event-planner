@@ -112,4 +112,5 @@ func migrateEventsTable() {
 	_, _ = DB.Exec("ALTER TABLE events ADD COLUMN price REAL")
 	_, _ = DB.Exec("ALTER TABLE events ADD COLUMN priority TEXT")
 	_, _ = DB.Exec("ALTER TABLE events ADD COLUMN ticketsAvailable INTEGER NOT NULL DEFAULT 0")
+	_, _ = DB.Exec("ALTER TABLE events ADD COLUMN event_type TEXT")
 }

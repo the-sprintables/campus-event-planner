@@ -1,71 +1,118 @@
-import React, { useEffect, useState } from 'react'
-import { Event } from '../types'
+import React, { useEffect, useRef, useState } from "react";
+import { Event } from "../types";
+import { FaChevronDown } from "react-icons/fa";
 
 function uid() {
-  return Math.random().toString(36).slice(2, 9)
+  return Math.random().toString(36).slice(2, 9);
 }
 
 async function handleImageUpload(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
-    if (file.size > 5000000) { // 5MB limit
-      reject(new Error('File size must be less than 5MB'))
-      return
+    if (file.size > 5000000) {
+      // 5MB limit
+      reject(new Error("File size must be less than 5MB"));
+      return;
     }
 
-    if (!file.type.startsWith('image/')) {
-      reject(new Error('File must be an image'))
-      return
+    if (!file.type.startsWith("image/")) {
+      reject(new Error("File must be an image"));
+      return;
     }
 
-    const reader = new FileReader()
+    const reader = new FileReader();
     reader.onload = () => {
-      resolve(reader.result as string)
-    }
+      resolve(reader.result as string);
+    };
     reader.onerror = () => {
-      reject(new Error('Failed to read file'))
-    }
-    reader.readAsDataURL(file)
-  })
+      reject(new Error("Failed to read file"));
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
-export default function EventForm({ onCreate, onUpdate, editingEvent }: { onCreate?: (e: Event) => void; onUpdate?: (e: Event) => void; editingEvent?: Event | null }) {
-  const [title, setTitle] = useState('')
-  const [date, setDate] = useState('')
-  const [location, setLocation] = useState('')
-  const [description, setDescription] = useState('')
-  const [price, setPrice] = useState('')
-  const [imageData, setImageData] = useState('')
-  const [imageError, setImageError] = useState('')
-  const [color, setColor] = useState('#fef3c7')
-  const [priority, setPriority] = useState<'available' | 'almost-full' | 'full'>('available')
+export default function EventForm({
+  onCreate,
+  onUpdate,
+  editingEvent,
+}: {
+  onCreate?: (e: Event) => void;
+  onUpdate?: (e: Event) => void;
+  editingEvent?: Event | null;
+}) {
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState("");
+  const [location, setLocation] = useState("");
+  const [description, setDescription] = useState("");
+  const [price, setPrice] = useState("");
+  const [imageData, setImageData] = useState("");
+  const [imageError, setImageError] = useState("");
+  const [color, setColor] = useState("#fef3c7");
+  const [priority, setPriority] = useState<
+    "available" | "almost-full" | "full"
+  >("available");
+
+  // Select event type
+  const [selectedType, setSelectedType] = useState<string>("");
+  const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
+  const eventTypes = [
+    "Technology",
+    "Sports",
+    "Medicine",
+    "Fitness",
+    "Entertainment",
+    "Arts",
+    "Education",
+    "Travel",
+    "Party",
+  ];
+  const handleSelect = (type: string) => {
+    setSelectedType(type);
+    setDropdownOpen(false); // Close dropdown automatically
+  };
+  // Complete event types
+
+  // Tickets dropdown
+  const [selectedTickets, setSelectedTickets] = useState<number | null>(null);
+  const [ticketsDropdownOpen, setTicketsDropdownOpen] = useState<boolean>(false);
+  const ticketOptions = [10, 20, 30, 40, 50];
+  const handleSelectTickets = (tickets: number) => {
+    setSelectedTickets(tickets);
+    setTicketsDropdownOpen(false);
+  };
 
   useEffect(() => {
     if (editingEvent) {
-      setTitle(editingEvent.title || '')
-      setDate(editingEvent.date || '')
-      setLocation(editingEvent.location || '')
-      setDescription(editingEvent.description || '')
-      setPrice(editingEvent.price !== undefined ? String(editingEvent.price) : '')
-      setImageData(editingEvent.imageData || '')
-      setColor(editingEvent.color || '#fef3c7')
-      setPriority(editingEvent.priority || 'available')
+      setTitle(editingEvent.title || "");
+      setDate(editingEvent.date || "");
+      setLocation(editingEvent.location || "");
+      setDescription(editingEvent.description || "");
+      setPrice(
+        editingEvent.price !== undefined ? String(editingEvent.price) : ""
+      );
+      setImageData(editingEvent.imageData || "");
+      setColor(editingEvent.color || "#fef3c7");
+      setPriority(editingEvent.priority || "available");
+      setSelectedType(editingEvent.eventType || "");
+      setSelectedTickets(editingEvent.ticketsAvailable || null);
     } else {
-      setTitle('')
-      setDate('')
-      setLocation('')
-      setDescription('')
-      setPrice('')
-      setImageData('')
-      setColor('#fef3c7')
-      setPriority('available')
+      setTitle("");
+      setDate("");
+      setLocation("");
+      setDescription("");
+      setPrice("");
+      setImageData("");
+      setColor("#fef3c7");
+      setPriority("available");
+       setSelectedType("");
+      setSelectedTickets(null);
     }
-  }, [editingEvent])
+  }, [editingEvent]);
 
   function submit(e: React.FormEvent) {
-    e.preventDefault()
-    const t = title.trim()
-    const d = date.trim()
-    if (!t || !d) return
+    e.preventDefault();
+    const t = title.trim();
+    const d = date.trim();
+    if (!t || !d) return;
     const newEvent: Event = {
       id: editingEvent?.id || uid(),
       title: t,
@@ -76,55 +123,80 @@ export default function EventForm({ onCreate, onUpdate, editingEvent }: { onCrea
       ownerEmail: editingEvent?.ownerEmail,
       imageData: imageData || undefined,
       color: color || undefined,
-      priority
-    }
+      priority,
+      eventType: selectedType,
+      ticketsAvailable: editingEvent?.ticketsAvailable ?? 100,
+    };
     if (editingEvent && onUpdate) {
-      onUpdate(newEvent)
+      onUpdate(newEvent);
     } else if (!editingEvent && onCreate) {
-      onCreate(newEvent)
+      onCreate(newEvent);
     }
     // reset handled by effect when editingEvent becomes null
   }
 
   return (
-    <form className="event-form" onSubmit={submit}>
-      <h2>Create event</h2>
+    <form className="event-form ps-4 py-4" onSubmit={submit}>
+      <h2 className="text-2xl font-bold text-center text-primary">Create an Event</h2>
       <label>
         Title
-        <input value={title} onChange={e => setTitle(e.target.value)} required />
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          required
+          placeholder="Event Title"
+        />
       </label>
+      
       <label>
         Date
-        <input type="date" value={date} onChange={e => setDate(e.target.value)} required />
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          required
+        />
       </label>
       <label>
         Location
-        <input value={location} onChange={e => setLocation(e.target.value)} />
+        <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location"/>
       </label>
       <label>
         Description
-        <textarea value={description} onChange={e => setDescription(e.target.value)} />
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
       </label>
       <label>
         Price (EUR)
-        <input type="number" min="0" step="0.01" value={price} onChange={e => setPrice(e.target.value)} />
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          value={price}
+          placeholder="Ticket Price"
+          onChange={(e) => setPrice(e.target.value)}
+        />
       </label>
       <label>
         Event Image
         <div className="file-input-container">
-          <input 
-            type="file" 
+          <input
+            type="file"
             accept="image/*"
             onChange={async (e) => {
-              setImageError('')
-              const file = e.target.files?.[0]
-              if (!file) return
-              
+              setImageError("");
+              const file = e.target.files?.[0];
+              if (!file) return;
+
               try {
-                const data = await handleImageUpload(file)
-                setImageData(data)
+                const data = await handleImageUpload(file);
+                setImageData(data);
               } catch (err) {
-                setImageError(err instanceof Error ? err.message : 'Failed to upload image')
+                setImageError(
+                  err instanceof Error ? err.message : "Failed to upload image"
+                );
               }
             }}
           />
@@ -132,43 +204,118 @@ export default function EventForm({ onCreate, onUpdate, editingEvent }: { onCrea
         </div>
       </label>
       {imageData && (
-        <div style={{ marginBottom: '1rem' }}>
-          <img 
-            src={imageData} 
-            alt="Event preview" 
-            style={{ maxWidth: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px' }} 
+        <div style={{ marginBottom: "1rem" }}>
+          <img
+            src={imageData}
+            alt="Event preview"
+            style={{
+              maxWidth: "100%",
+              height: "200px",
+              objectFit: "cover",
+              borderRadius: "8px",
+            }}
           />
-          <button 
-            type="button" 
-            className="btn ghost" 
-            onClick={() => setImageData('')}
-            style={{ marginTop: '0.5rem' }}
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={() => setImageData("")}
+            style={{ marginTop: "0.5rem" }}
           >
             Remove image
           </button>
         </div>
       )}
 
+      {/* Event types */}
+      <div className="flex flex-col gap-2 w-64 relative border-2 rounded-md mb-2">
+        <div
+          className="input input-bordered w-full flex justify-between items-center cursor-pointer bg-white"
+          onClick={() => setDropdownOpen(!dropdownOpen)}
+        >
+          <span>{selectedType || "Select Event Type"}</span>
+          <FaChevronDown className="ml-2 text-gray-500" />
+        </div>
+
+        {dropdownOpen && (
+          <ul className="absolute top-full left-0 z-50 w-full shadow-md rounded-md mt-1 border border-gray-300 bg-white">
+            {eventTypes.map((type) => (
+              <li key={type}>
+                <button
+                  type="button"
+                  className="w-full text-left px-4 py-2 hover:bg-primary hover:text-white rounded-md"
+                  onClick={() => handleSelect(type)}
+                >
+                  {type}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      {/* Complent event type section Event types */}
+
+      {/* Tickets Dropdown (NEW) */}
+      <div className="flex flex-col gap-2 w-64 relative border-2 rounded-md mb-2">
+        <div
+          className="input input-bordered w-full flex justify-between items-center cursor-pointer bg-white"
+          onClick={() => setTicketsDropdownOpen(!ticketsDropdownOpen)}
+        >
+          <span>{selectedTickets || "Select Tickets"}</span>
+          <FaChevronDown className="ml-2 text-gray-500" />
+        </div>
+        {ticketsDropdownOpen && (
+          <ul className="absolute top-full left-0 z-50 w-full shadow-md rounded-md mt-1 border border-gray-300 bg-white">
+            {ticketOptions.map((t) => (
+              <li key={t}>
+                <button
+                  type="button"
+                  className="w-full text-left px-4 py-2 hover:bg-primary hover:text-white rounded-md"
+                  onClick={() => handleSelectTickets(t)}
+                >
+                  {t}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+        {/* Complete Ticket Type */}
+
       <label>
         Background Color (used if no image uploaded)
-        <input type="color" value={color} onChange={e => setColor(e.target.value)} />
+        <input
+          type="color"
+          value={color}
+          onChange={(e) => setColor(e.target.value)}
+        />
       </label>
       <label>
         Priority Status
-        <select value={priority} onChange={e => setPriority(e.target.value as 'available' | 'almost-full' | 'full')}>
+        <select
+          value={priority}
+          onChange={(e) =>
+            setPriority(e.target.value as "available" | "almost-full" | "full")
+          }
+        >
           <option value="available">Available</option>
           <option value="almost-full">Almost Full</option>
           <option value="full">Full</option>
         </select>
       </label>
       <div className="form-actions">
-        <button type="submit">{editingEvent ? 'Save changes' : 'Add event'}</button>
+        <button type="submit" className="border-2 rounded-md p-3 bg-primary text-white hover:bg-secondary">
+          {editingEvent ? "Save changes" : "Add event"}
+        </button>
         {editingEvent && (
-          <button type="button" className="btn ghost" onClick={() => onUpdate?.(editingEvent)}>
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={() => onUpdate?.(editingEvent)}
+          >
             Cancel
           </button>
         )}
       </div>
     </form>
-  )
+  );
 }
