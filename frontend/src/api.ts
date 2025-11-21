@@ -362,3 +362,113 @@ export async function deleteEvent(id: string): Promise<{ ok: boolean; error?: st
   }
 }
 
+// Event Registration API functions
+
+export interface EventRegistrationResponse {
+  message: string;
+  eventId: string;
+  userId?: string;
+}
+
+export async function registerForEvent(eventId: string): Promise<{ ok: boolean; data?: EventRegistrationResponse; error?: string }> {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      return { ok: false, error: 'Authentication required' };
+    }
+
+    const response = await fetch(`${API_BASE_URL}/events/${eventId}/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await handleApiError(response, 'Failed to register for event');
+      return { ok: false, error: errorMessage };
+    }
+
+    const data = await response.json();
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, error: handleNetworkError(error, 'register for event') };
+  }
+}
+
+export async function unregisterFromEvent(eventId: string): Promise<{ ok: boolean; data?: EventRegistrationResponse; error?: string }> {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      return { ok: false, error: 'Authentication required' };
+    }
+
+    const response = await fetch(`${API_BASE_URL}/events/${eventId}/register`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await handleApiError(response, 'Failed to unregister from event');
+      return { ok: false, error: errorMessage };
+    }
+
+    const data = await response.json();
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, error: handleNetworkError(error, 'unregister from event') };
+  }
+}
+
+export async function checkEventRegistration(eventId: string): Promise<{ ok: boolean; data?: { isRegistered: boolean }; error?: string }> {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      return { ok: false, error: 'Authentication required' };
+    }
+
+    const response = await fetch(`${API_BASE_URL}/events/${eventId}/registration/status`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await handleApiError(response, 'Failed to check registration status');
+      return { ok: false, error: errorMessage };
+    }
+
+    const data = await response.json();
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, error: handleNetworkError(error, 'check registration status') };
+  }
+}
+
+export async function getEventRegistrationCount(eventId: string): Promise<{ ok: boolean; data?: { count: number; capacity?: number }; error?: string }> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/events/${eventId}/registrations`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await handleApiError(response, 'Failed to get registration count');
+      return { ok: false, error: errorMessage };
+    }
+
+    const data = await response.json();
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, error: handleNetworkError(error, 'get registration count') };
+  }
+}
+

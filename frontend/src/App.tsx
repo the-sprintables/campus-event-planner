@@ -116,7 +116,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={(
             <RequireAuth>
-              <EventsPage events={events} />
+              <EventsPage events={events} onEventUpdate={updateEvent} />
             </RequireAuth>
           )} />
           <Route path="/manage" element={(
