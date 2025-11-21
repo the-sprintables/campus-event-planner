@@ -295,7 +295,19 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
                   : { background: ev.color && ev.color.trim() !== '' ? `linear-gradient(120deg, ${ev.color}, #ffffff)` : 'linear-gradient(120deg, #fef3c7, #ffffff)' }
                 }
               />
-              <div className="badge">{getPriorityLabel(ev.priority)}</div>
+              {(ev.capacity !== undefined || ev.ticketsAvailable !== undefined) && (
+                <div className="badge" style={{ 
+                  marginTop: '12px', 
+                  marginBottom: '12px', 
+                  padding: '10px 16px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  lineHeight: '1.2'
+                }}>
+                  {Math.max(0, (ev.capacity ?? ev.ticketsAvailable ?? 0) - (ev.registrationCount || 0))} tickets left
+                </div>
+              )}
               <div className="title">{ev.title}</div>
               <div className="meta">{ev.date}{ev.location ? ` • ${ev.location}` : ''}</div>
               <div className="price">{ev.price !== undefined ? `From €${ev.price.toFixed(2)}` : ''}</div>

@@ -12,6 +12,7 @@ export interface BackendEvent {
   Price?: number;
   Priority?: string;
   EventType?: string;
+  TicketsAvailable?: number;
 }
 
 // Frontend Event type (from types.ts)
@@ -94,6 +95,9 @@ function backendToFrontendEvent(be: BackendEvent): Event {
     price: be.Price,
     priority:
       (be.Priority as "available" | "almost-full" | "full") || "available",
+    eventType: be.EventType,
+    ticketsAvailable: be.TicketsAvailable ?? 0,
+    capacity: be.TicketsAvailable, // Map TicketsAvailable to capacity
   };
 }
 
