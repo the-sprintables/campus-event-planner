@@ -11,7 +11,7 @@ export interface BackendEvent {
   Color?: string;
   Price?: number;
   Priority?: string;
-  EventType?: string;
+  eventType?: string; // Backend sends lowercase "eventType" in JSON
   TicketsAvailable?: number;
 }
 
@@ -96,7 +96,7 @@ function backendToFrontendEvent(be: BackendEvent): Event {
     priority:
       (be.Priority as "available" | "almost-full" | "full") || "available",
     // Parse eventType - can be comma-separated string or single string
-    eventType: be.EventType ? (be.EventType.includes(',') ? be.EventType.split(',').map(t => t.trim()) : be.EventType) : undefined,
+    eventType: be.eventType ? (be.eventType.includes(',') ? be.eventType.split(',').map(t => t.trim()) : be.eventType) : undefined,
     ticketsAvailable: be.TicketsAvailable ?? 0,
     capacity: be.TicketsAvailable, // Map TicketsAvailable to capacity
   };
@@ -136,7 +136,7 @@ function frontendToBackendEvent(
     Priority: fe.priority || "available",
     // Convert array to comma-separated string for backend
     // Backend expects lowercase "eventType" in JSON
-    EventType: Array.isArray(fe.eventType) ? fe.eventType.join(',') : (fe.eventType || ''),
+    eventType: Array.isArray(fe.eventType) ? fe.eventType.join(',') : (fe.eventType || ''),
     TicketsAvailable: fe.ticketsAvailable ?? 0,
   };
 }
@@ -335,7 +335,7 @@ export async function createEvent(
       Color: backendEvent.Color || "",
       Priority: backendEvent.Priority || "available",
       TicketsAvailable: backendEvent.TicketsAvailable ?? 0,
-      eventType: backendEvent.EventType || "", // Backend expects lowercase "eventType"
+      eventType: backendEvent.eventType || "", // Backend expects lowercase "eventType"
     };
     
     // Only include Price if it's defined (backend expects *float64, so null/undefined should be omitted)
@@ -403,7 +403,7 @@ export async function updateEvent(
       Color: backendEvent.Color || "",
       Priority: backendEvent.Priority || "available",
       TicketsAvailable: backendEvent.TicketsAvailable ?? 0,
-      eventType: backendEvent.EventType || "", // Backend expects lowercase "eventType"
+      eventType: backendEvent.eventType || "", // Backend expects lowercase "eventType"
     };
     
     // Only include Price if it's defined (backend expects *float64, so null/undefined should be omitted)

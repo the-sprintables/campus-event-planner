@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Event } from "../types";
-import { FaChevronDown } from "react-icons/fa";
 
 function uid() {
   return Math.random().toString(36).slice(2, 9);
@@ -51,9 +50,8 @@ export default function EventForm({
     "available" | "almost-full" | "full"
   >("available");
 
-  // Select multiple event types
+  // Select multiple event types (max 2)
   const [selectedTypes, setSelectedTypes] = useState<Record<string, boolean>>({});
-  const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
   const eventTypes = [
     "Sports & Fitness",
     "Music & Entertainment",
@@ -67,16 +65,33 @@ export default function EventForm({
     "Health & Wellness",
   ];
   const handleToggleType = (type: string) => {
-    setSelectedTypes(prev => ({
-      ...prev,
-      [type]: !prev[type]
-    }));
+    setSelectedTypes(prev => {
+      const isCurrentlySelected = prev[type] || false;
+      const currentlySelectedCount = Object.keys(prev).filter(t => prev[t]).length;
+      
+      // If unchecking, allow it
+      if (isCurrentlySelected) {
+        return {
+          ...prev,
+          [type]: false
+        };
+      }
+      
+      // If checking and already at max (2), don't allow
+      if (currentlySelectedCount >= 2) {
+        return prev;
+      }
+      
+      // Otherwise, allow checking
+      return {
+        ...prev,
+        [type]: true
+      };
+    });
   };
   
   const selectedTypesList = Object.keys(selectedTypes).filter(type => selectedTypes[type]);
-  const displayText = selectedTypesList.length > 0 
-    ? `${selectedTypesList.length} type${selectedTypesList.length > 1 ? 's' : ''} selected`
-    : "Select Event Types";
+  const maxReached = selectedTypesList.length >= 2;
 
   // Tickets input field
   const [selectedTickets, setSelectedTickets] = useState<string>("");
@@ -242,38 +257,77 @@ export default function EventForm({
         </div>
       )}
 
-      {/* Event types - Dropdown with checkboxes */}
+      {/* Event types - Checkbox grid (max 2 selections) */}
       <label>
-        Event Types (Select multiple)
-        <div className="flex flex-col gap-2 w-64 relative border-2 rounded-md mb-2" style={{ marginTop: '8px' }}>
-          <div
-            className="input input-bordered w-full flex justify-between items-center cursor-pointer bg-white"
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-          >
-            <span>{displayText}</span>
-            <FaChevronDown className="ml-2 text-gray-500" />
+        Event Types (Select up to 2)
+        <div style={{ marginTop: '8px', marginBottom: '8px' }}>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
+            gap: '12px',
+            marginTop: '8px'
+          }}>
+            {eventTypes.map((type) => {
+              const isSelected = selectedTypes[type] || false;
+              const isDisabled = !isSelected && maxReached;
+              
+              return (
+                <label
+                  key={type}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 12px',
+                    border: isSelected ? '2px solid #2563eb' : '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    backgroundColor: isSelected ? 'rgba(37, 99, 235, 0.1)' : 'white',
+                    cursor: isDisabled ? 'not-allowed' : 'pointer',
+                    opacity: isDisabled ? 0.5 : 1,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isDisabled) {
+                      e.currentTarget.style.backgroundColor = isSelected ? 'rgba(37, 99, 235, 0.15)' : '#f9fafb';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isDisabled) {
+                      e.currentTarget.style.backgroundColor = isSelected ? 'rgba(37, 99, 235, 0.1)' : 'white';
+                    }
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => handleToggleType(type)}
+                    disabled={isDisabled}
+                    style={{ 
+                      cursor: isDisabled ? 'not-allowed' : 'pointer',
+                      width: '18px',
+                      height: '18px'
+                    }}
+                  />
+                  <span style={{ 
+                    fontSize: '0.9rem',
+                    fontWeight: isSelected ? '600' : '400',
+                    color: isSelected ? '#2563eb' : '#374151'
+                  }}>
+                    {type}
+                  </span>
+                </label>
+              );
+            })}
           </div>
-
-          {dropdownOpen && (
-            <ul className="absolute top-full left-0 z-50 w-full shadow-md rounded-md mt-1 border border-gray-300 bg-white max-h-64 overflow-y-auto">
-              {eventTypes.map((type) => (
-                <li key={type}>
-                  <label
-                    className="w-full text-left px-4 py-2 hover:bg-primary hover:text-white rounded-md flex items-center gap-2 cursor-pointer"
-                    style={{ display: 'flex', alignItems: 'center' }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedTypes[type] || false}
-                      onChange={() => handleToggleType(type)}
-                      onClick={(e) => e.stopPropagation()}
-                      style={{ cursor: 'pointer' }}
-                    />
-                    <span>{type}</span>
-                  </label>
-                </li>
-              ))}
-            </ul>
+          {maxReached && (
+            <p style={{ 
+              marginTop: '8px', 
+              fontSize: '0.85rem', 
+              color: '#6b7280',
+              fontStyle: 'italic'
+            }}>
+              Maximum of 2 event types selected
+            </p>
           )}
         </div>
       </label>

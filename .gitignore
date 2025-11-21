@@ -29,7 +29,3 @@ backend/event-planner-server
 # OS
 .DS_Store
 Thumbs.db
-
-# Database files
-*.db
-backend/api.db
