@@ -86,13 +86,21 @@ export default function Profile() {
     setError(null)
     setSuccess(null)
 
+    // Get all selected event types
     const selectedTypesArray = Object.keys(selectedEventTypes).filter(
       type => selectedEventTypes[type]
     )
 
-    // Update only preferred event types
     const result = await api.updateUserProfile('', selectedTypesArray)
     if (result.ok) {
+      // Also update localStorage for backward compatibility
+      if (user?.email) {
+        localStorage.setItem(`user_event_types_${user.email}`, JSON.stringify(selectedTypesArray))
+        // Store first one as preferred for backward compatibility
+        if (selectedTypesArray.length > 0) {
+          localStorage.setItem(`user_preferred_event_type_${user.email}`, selectedTypesArray[0])
+        }
+      }
       setSuccess('Profile updated successfully!')
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(null), 3000)
@@ -186,8 +194,8 @@ export default function Profile() {
               Preferred Event Types (for suggestions)
             </label>
             <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
               gap: '12px',
               marginTop: '8px'
             }}>
@@ -195,13 +203,14 @@ export default function Profile() {
                 const isSelected = selectedEventTypes[type] || false;
                 
                 return (
-                  <label
+                  <div
                     key={type}
+                    onClick={() => handleToggleEventType(type)}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '8px',
-                      padding: '10px 12px',
+                      justifyContent: 'space-between',
+                      padding: '12px 16px',
                       border: isSelected ? '2px solid #2563eb' : '1px solid #e5e7eb',
                       borderRadius: '8px',
                       backgroundColor: isSelected ? 'rgba(37, 99, 235, 0.1)' : 'white',
@@ -209,22 +218,18 @@ export default function Profile() {
                       transition: 'all 0.2s',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = isSelected ? 'rgba(37, 99, 235, 0.15)' : '#f9fafb';
+                      if (!isSelected) {
+                        e.currentTarget.style.backgroundColor = '#f9fafb';
+                        e.currentTarget.style.borderColor = '#d1d5db';
+                      }
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = isSelected ? 'rgba(37, 99, 235, 0.1)' : 'white';
+                      if (!isSelected) {
+                        e.currentTarget.style.backgroundColor = 'white';
+                        e.currentTarget.style.borderColor = '#e5e7eb';
+                      }
                     }}
                   >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => handleToggleEventType(type)}
-                      style={{ 
-                        cursor: 'pointer',
-                        width: '18px',
-                        height: '18px'
-                      }}
-                    />
                     <span style={{ 
                       fontSize: '0.9rem',
                       fontWeight: isSelected ? '600' : '400',
@@ -232,12 +237,21 @@ export default function Profile() {
                     }}>
                       {type}
                     </span>
-                  </label>
+                    {isSelected && (
+                      <span style={{ 
+                        color: '#10b981',
+                        fontSize: '1.2rem',
+                        fontWeight: 'bold'
+                      }}>
+                        ✓
+                      </span>
+                    )}
+                  </div>
                 );
               })}
             </div>
             <small style={{ color: 'var(--muted)', fontSize: '0.85rem', display: 'block', marginTop: '8px' }}>
-              Select your preferred event types to receive personalized suggestions
+              Click on event types to select your preferred types for personalized suggestions
             </small>
           </div>
 

@@ -3,6 +3,7 @@ import { FaPlusCircle } from "react-icons/fa";
 import { TiTick } from "react-icons/ti";
 import { useNavigate } from "react-router-dom";
 import { currentUser } from "../auth";
+import * as api from "../api";
 
 const eventTypes = [
   "Sports & Fitness",
@@ -24,6 +25,7 @@ const Feed = () => {
 
   const [selectedTypes, setSelectedTypes] = useState<Record<string, boolean>>({});
   const [showAlert, setShowAlert] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     // Check if user has already completed customization
@@ -49,23 +51,49 @@ const Feed = () => {
 
   const isSubmitDisabled = !Object.values(selectedTypes).some((v) => v);
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!user?.email) return;
     
-    // Save selected event types to localStorage
     const selectedTypesArray = Object.keys(selectedTypes).filter(type => selectedTypes[type]);
-    localStorage.setItem(`user_event_types_${user.email}`, JSON.stringify(selectedTypesArray));
+    if (selectedTypesArray.length === 0) return;
     
-    // Mark as completed
-    localStorage.setItem(`customize_completed_${user.email}`, 'true');
+    setSaving(true);
     
-    setShowAlert(true);
+    // Save selected event types to backend
+    const result = await api.updateUserProfile('', selectedTypesArray);
+    
+    if (result.ok) {
+      // Also save to localStorage for backward compatibility
+      localStorage.setItem(`user_event_types_${user.email}`, JSON.stringify(selectedTypesArray));
+      if (selectedTypesArray.length > 0) {
+        localStorage.setItem(`user_preferred_event_type_${user.email}`, selectedTypesArray[0]);
+      }
+      
+      // Mark as completed
+      localStorage.setItem(`customize_completed_${user.email}`, 'true');
+      
+      setShowAlert(true);
 
-    // After 2 seconds, close modal and redirect to home
-    setTimeout(() => {
-      modalRef.current?.close();
-      navigate("/");
-    }, 2000);
+      // After 2 seconds, close modal and redirect to home
+      setTimeout(() => {
+        modalRef.current?.close();
+        navigate("/");
+      }, 2000);
+    } else {
+      // If backend save fails, still save to localStorage
+      localStorage.setItem(`user_event_types_${user.email}`, JSON.stringify(selectedTypesArray));
+      if (selectedTypesArray.length > 0) {
+        localStorage.setItem(`user_preferred_event_type_${user.email}`, selectedTypesArray[0]);
+      }
+      localStorage.setItem(`customize_completed_${user.email}`, 'true');
+      setShowAlert(true);
+      setTimeout(() => {
+        modalRef.current?.close();
+        navigate("/");
+      }, 2000);
+    }
+    
+    setSaving(false);
   }
 
   function handleCancel() {
@@ -125,24 +153,29 @@ const Feed = () => {
             
             <h2 className="text-black font-medium">Event Subscription</h2>
             <p className="text-xl text-primary font-bold">
-              Choose your favorite event types
+              Choose your preferred event types
             </p>
 
             <div className="grid grid-cols-3 gap-6 mt-4">
-              {eventTypes.map((type) => (
-                <div
-                  key={type}
-                  className="flex flex-row items-center w-35 bg-primary rounded-md p-2 justify-around cursor-pointer"
-                  onClick={() => toggleType(type)}
-                >
-                  <button type="button">{type}</button>
-                  {selectedTypes[type] ? (
-                    <TiTick className="ms-2 text-green-300" size={22} />
-                  ) : (
-                    <FaPlusCircle className="ms-2" size={18} />
-                  )}
-                </div>
-              ))}
+              {eventTypes.map((type) => {
+                const isSelected = selectedTypes[type] || false;
+                return (
+                  <div
+                    key={type}
+                    className={`flex flex-row items-center w-35 rounded-md p-2 justify-around cursor-pointer ${
+                      isSelected ? 'bg-blue-500' : 'bg-primary'
+                    }`}
+                    onClick={() => toggleType(type)}
+                  >
+                    <button type="button">{type}</button>
+                    {isSelected ? (
+                      <TiTick className="ms-2 text-green-300" size={22} />
+                    ) : (
+                      <FaPlusCircle className="ms-2" size={18} />
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             <div className="modal-action">
@@ -156,9 +189,9 @@ const Feed = () => {
                 <button
                   type="submit"
                   className={`btn ${isSubmitDisabled ? "btn-disabled" : ""}`}
-                  disabled={isSubmitDisabled}
+                  disabled={isSubmitDisabled || saving}
                 >
-                  Submit
+                  {saving ? "Saving..." : "Submit"}
                 </button>
               </form>
             </div>

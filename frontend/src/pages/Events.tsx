@@ -4,7 +4,7 @@ import BookingModal from '../components/BookingModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { Event } from '../types'
 import { currentUser } from '../auth'
-import { unregisterFromEvent, checkEventRegistration } from '../api'
+import { unregisterFromEvent, checkEventRegistration, getUserProfile } from '../api'
 
 function getPriorityLabel(priority: string = "available") {
   switch (priority) {
@@ -32,7 +32,7 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
   const [showFilter, setShowFilter] = useState(false)
   const [selectedEventTypes, setSelectedEventTypes] = useState<Record<string, boolean>>({})
   const [viewMode, setViewMode] = useState<'suggested' | 'all'>('all') // 'suggested' or 'all'
-  const [userPreferredTypes, setUserPreferredTypes] = useState<string[]>([]) // User's saved event types
+  const [userPreferredTypes, setUserPreferredTypes] = useState<string[]>([]) // User's preferred event types (multiple)
   const checkedEventIdsRef = useRef<Set<string>>(new Set())
   const lastCheckedEventIdsRef = useRef<string>('')
   
@@ -52,24 +52,43 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
     "Health & Wellness",
   ]
 
-  // Load user's saved event type preferences on mount
+  // Load user's preferred event types from backend on mount
   useEffect(() => {
-    if (user?.email) {
-      const savedTypes = localStorage.getItem(`user_event_types_${user.email}`)
-      if (savedTypes) {
-        try {
-          const typesArray = JSON.parse(savedTypes) as string[]
-          // Store user's preferred types for suggested events view
-          setUserPreferredTypes(typesArray)
-          // Keep default as 'all' view - user can manually switch to 'suggested' if desired
-          // Don't pre-fill the filter dropdown - let it be empty initially
-          // The filter dropdown is separate from the suggested events view
-        } catch (error) {
-          console.error('Error parsing saved event types:', error)
+    async function loadPreferredEventTypes() {
+      if (user?.email) {
+        // First try to load from backend
+        const profileResult = await getUserProfile()
+        if (profileResult.ok && profileResult.profile) {
+          // Get all preferred event types
+          if (profileResult.profile.preferredEventTypes && profileResult.profile.preferredEventTypes.length > 0) {
+            setUserPreferredTypes(profileResult.profile.preferredEventTypes)
+            return
+          }
+        }
+        
+        // Fallback to localStorage for backward compatibility
+        const savedTypes = localStorage.getItem(`user_event_types_${user.email}`)
+        if (savedTypes) {
+          try {
+            const typesArray = JSON.parse(savedTypes) as string[]
+            if (typesArray.length > 0) {
+              setUserPreferredTypes(typesArray)
+              return
+            }
+          } catch (error) {
+            console.error('Error parsing saved event types:', error)
+          }
+        }
+        
+        // Also check single type format for backward compatibility
+        const savedType = localStorage.getItem(`user_preferred_event_type_${user.email}`)
+        if (savedType) {
+          setUserPreferredTypes([savedType])
         }
       }
     }
-    // Default view mode is 'all' - no need to set it here as it's already the initial state
+    
+    loadPreferredEventTypes()
   }, [user])
   
   // Note: We don't need to update localEvents here anymore
@@ -148,11 +167,12 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
     // If viewMode is 'suggested', filter by user's preferred event types
     else if (viewMode === 'suggested') {
       if (userPreferredTypes.length > 0) {
-        // Filter by user's preferred event types
+        // Filter by user's preferred event types - show events that match any of the preferred types
         filteredEvents = events.filter(event => {
           if (!event.eventType) return false;
           // Handle both string and array formats
           const eventTypes = Array.isArray(event.eventType) ? event.eventType : [event.eventType];
+          // Check if any of the event's types match any of the user's preferred types
           return eventTypes.some(type => userPreferredTypes.includes(type));
         })
       } else {
