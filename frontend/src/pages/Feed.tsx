@@ -52,6 +52,10 @@ const Feed = () => {
   function handleSubmit() {
     if (!user?.email) return;
     
+    // Save selected event types to localStorage
+    const selectedTypesArray = Object.keys(selectedTypes).filter(type => selectedTypes[type]);
+    localStorage.setItem(`user_event_types_${user.email}`, JSON.stringify(selectedTypesArray));
+    
     // Mark as completed
     localStorage.setItem(`customize_completed_${user.email}`, 'true');
     
