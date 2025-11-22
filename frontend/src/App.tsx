@@ -56,16 +56,17 @@ export default function App() {
     fetchEvents()
   }, [])
 
-  async function addEvent(e: Event) {
+  async function addEvent(e: Event): Promise<{ success: boolean; error?: string }> {
     const result = await api.createEvent(e)
     if (result.ok && result.event) {
       setEvents(prev => [result.event!, ...prev])
+      return { success: true }
     } else {
-      alert(result.error || 'Failed to create event')
+      return { success: false, error: result.error || 'Failed to create event' }
     }
   }
 
-  async function updateEvent(updated: Event) {
+  async function updateEvent(updated: Event): Promise<{ success: boolean; error?: string }> {
     const result = await api.updateEvent(updated.id, updated)
     if (result.ok) {
       // Refresh events from server to get latest data
@@ -73,8 +74,9 @@ export default function App() {
       if (fetchResult.ok && fetchResult.events) {
         setEvents(fetchResult.events)
       }
+      return { success: true }
     } else {
-      alert(result.error || 'Failed to update event')
+      return { success: false, error: result.error || 'Failed to update event' }
     }
   }
 
