@@ -28,8 +28,8 @@ function decodeJWT(token: string): { userId?: number; email?: string } | null {
   }
 }
 
-export function register(email: string, password: string) {
-  return api.register(email, password)
+export function register(email: string, password: string, name: string) {
+  return api.register(email, password, name)
 }
 
 export function login(email: string, password: string, role?: 'admin' | 'user') {

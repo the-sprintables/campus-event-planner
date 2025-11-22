@@ -21,6 +21,8 @@ func RegisterRoutes(server *gin.Engine) {
 	// General event routes registered after specific ones
 	authenticated.PUT("/events/:id", UpdateEvent)
 	authenticated.DELETE("/events/:id", DeleteEvent)
+	authenticated.GET("/users/profile", getProfile)
+	authenticated.PUT("/users/profile", updateProfile)
 	authenticated.PUT("/users/password", updatePassword)
 
 	server.POST("/signup", signup)

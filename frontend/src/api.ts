@@ -145,7 +145,8 @@ function frontendToBackendEvent(
 
 export async function register(
   email: string,
-  password: string
+  password: string,
+  name: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const response = await fetch(`${API_BASE_URL}/signup`, {
@@ -153,7 +154,7 @@ export async function register(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, name }),
     });
 
     if (!response.ok) {
@@ -248,6 +249,81 @@ export async function updatePassword(
     return { ok: true };
   } catch (error) {
     return { ok: false, error: handleNetworkError(error, "update password") };
+  }
+}
+
+export interface UserProfile {
+  id: number;
+  email: string;
+  name: string;
+  role: string;
+  preferredEventTypes: string[];
+}
+
+export async function getUserProfile(): Promise<{
+  ok: boolean;
+  profile?: UserProfile;
+  error?: string;
+}> {
+  const token = getAuthToken();
+  if (!token) {
+    return { ok: false, error: "Not authenticated" };
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/profile`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await handleApiError(
+        response,
+        "Failed to fetch profile"
+      );
+      return { ok: false, error: errorMessage };
+    }
+
+    const profile: UserProfile = await response.json();
+    return { ok: true, profile };
+  } catch (error) {
+    return { ok: false, error: handleNetworkError(error, "fetch profile") };
+  }
+}
+
+export async function updateUserProfile(
+  name: string,
+  preferredEventTypes: string[]
+): Promise<{ ok: boolean; error?: string }> {
+  const token = getAuthToken();
+  if (!token) {
+    return { ok: false, error: "Not authenticated" };
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/profile`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name, preferredEventTypes }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await handleApiError(
+        response,
+        "Failed to update profile"
+      );
+      return { ok: false, error: errorMessage };
+    }
+
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: handleNetworkError(error, "update profile") };
   }
 }
 

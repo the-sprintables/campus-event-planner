@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom'
 import * as api from './api'
 import Feed from './pages/Feed'
 import Footer from './pages/Footer'
+import Profile from './pages/Profile'
 
 export default function App() {
   const navigate = useNavigate()
@@ -105,6 +106,7 @@ export default function App() {
           )}
           {user && (
             <>
+              <Link to="/profile">Profile</Link> |
               <span>Welcome, {user.email}</span>
               <button onClick={handleLogout} style={{ marginLeft: 8 }}>Logout</button>
             </>
@@ -128,6 +130,11 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/feed" element={<Feed />} />
+          <Route path="/profile" element={(
+            <RequireAuth>
+              <Profile />
+            </RequireAuth>
+          )} />
         </Routes>
         
       </main>

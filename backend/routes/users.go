@@ -109,3 +109,69 @@ func updatePassword(context *gin.Context) {
 
 	context.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
 }
+
+func getProfile(context *gin.Context) {
+	userId := context.GetInt64("userId")
+
+	user, err := models.GetUserByID(userId)
+	if err != nil {
+		context.JSON(http.StatusNotFound, gin.H{"message": "User not found"})
+		return
+	}
+
+	// Parse preferred event types from comma-separated string to array
+	var preferredEventTypes []string
+	if user.PreferredEventTypes != "" {
+		preferredEventTypes = strings.Split(user.PreferredEventTypes, ",")
+		// Trim whitespace from each type
+		for i, eventType := range preferredEventTypes {
+			preferredEventTypes[i] = strings.TrimSpace(eventType)
+		}
+	}
+
+	context.JSON(http.StatusOK, gin.H{
+		"id":                  user.ID,
+		"email":               user.Email,
+		"name":                user.Name,
+		"role":                user.Role,
+		"preferredEventTypes": preferredEventTypes,
+	})
+}
+
+func updateProfile(context *gin.Context) {
+	userId := context.GetInt64("userId")
+
+	var request struct {
+		Name                string   `json:"name"`
+		PreferredEventTypes []string `json:"preferredEventTypes"`
+	}
+
+	err := context.ShouldBindJSON(&request)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"message": "Could not parse data"})
+		return
+	}
+
+	// Get user by ID
+	user, err := models.GetUserByID(userId)
+	if err != nil {
+		context.JSON(http.StatusNotFound, gin.H{"message": "User not found"})
+		return
+	}
+
+	// Convert preferred event types array to comma-separated string
+	preferredEventTypesStr := strings.Join(request.PreferredEventTypes, ",")
+
+	// Update profile
+	err = user.UpdateProfile(request.Name, preferredEventTypesStr)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"message": "Could not update profile"})
+		return
+	}
+
+	context.JSON(http.StatusOK, gin.H{
+		"message": "Profile updated successfully",
+		"name":    request.Name,
+		"preferredEventTypes": request.PreferredEventTypes,
+	})
+}

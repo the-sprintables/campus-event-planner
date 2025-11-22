@@ -76,6 +76,7 @@ func createTables() {
 	}
 
 	migrateEventsTable()
+	migrateUsersTable()
 
 	createDefaultAdmin()
 }
@@ -113,4 +114,9 @@ func migrateEventsTable() {
 	_, _ = DB.Exec("ALTER TABLE events ADD COLUMN priority TEXT")
 	_, _ = DB.Exec("ALTER TABLE events ADD COLUMN ticketsAvailable INTEGER NOT NULL DEFAULT 0")
 	_, _ = DB.Exec("ALTER TABLE events ADD COLUMN event_type TEXT")
+}
+
+func migrateUsersTable() {
+	_, _ = DB.Exec("ALTER TABLE users ADD COLUMN name TEXT")
+	_, _ = DB.Exec("ALTER TABLE users ADD COLUMN preferred_event_types TEXT")
 }
