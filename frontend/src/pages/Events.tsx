@@ -379,9 +379,9 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
               className="btn"
               onClick={handleSuggestedEvents}
               style={{
-                backgroundColor: viewMode === 'suggested' ? '#2563eb' : 'transparent',
-                color: viewMode === 'suggested' ? 'white' : '#2563eb',
-                border: '2px solid #2563eb',
+                backgroundColor: viewMode === 'suggested' ? 'var(--accent)' : 'transparent',
+                color: viewMode === 'suggested' ? 'white' : 'var(--accent)',
+                border: '2px solid var(--accent)',
                 fontWeight: '600',
                 padding: '8px 16px',
                 borderRadius: '8px',
@@ -410,9 +410,9 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
               className="btn"
               onClick={handleViewAllEvents}
               style={{
-                backgroundColor: viewMode === 'all' ? '#2563eb' : 'transparent',
-                color: viewMode === 'all' ? 'white' : '#2563eb',
-                border: '2px solid #2563eb',
+                backgroundColor: viewMode === 'all' ? 'var(--accent)' : 'transparent',
+                color: viewMode === 'all' ? 'white' : 'var(--accent)',
+                border: '2px solid var(--accent)',
                 fontWeight: '600',
                 padding: '8px 16px',
                 borderRadius: '8px',
@@ -454,11 +454,11 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
               top: '100%',
               right: 0,
               marginTop: '8px',
-              background: 'white',
-              border: '1px solid rgba(15,23,42,0.1)',
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
               borderRadius: '8px',
               padding: '16px',
-              boxShadow: '0 8px 30px rgba(15,23,42,0.1)',
+              boxShadow: '0 8px 30px rgba(2,6,23,0.12)',
               zIndex: 100,
               minWidth: '200px'
             }}>

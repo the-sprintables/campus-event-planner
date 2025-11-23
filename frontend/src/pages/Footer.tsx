@@ -3,7 +3,13 @@ import logo from "../assets/logo.png";
 const Footer = () => {
   return (
     <div>
-      <footer className="footer sm:footer-horizontal bg-base-200 text-base-content p-10">
+      <footer 
+        className="footer sm:footer-horizontal p-10"
+        style={{
+          backgroundColor: 'var(--footer-bg)',
+          color: 'var(--footer-text)'
+        }}
+      >
         <aside className="flex items-start gap-4 max-w-sm">
           <img
             src={logo}

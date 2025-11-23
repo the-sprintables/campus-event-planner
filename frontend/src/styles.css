@@ -1,15 +1,51 @@
 @import "tailwindcss";
 @plugin "daisyui";
 
-/* Modern, classy styles */
 :root {
+  /* Color tokens (light theme) */
   --bg: #f4f6fb;
+  --bg-2: #f7f9ff;
   --card: #ffffff;
+  --text: #0f172a;
   --muted: #6b7280;
+  --border: #e6eef8;
+  --border-2: #eef4ff;
+  --border-muted: #e5e7eb;
   --accent: #2563eb;
   --accent-600: #1e40af;
+  --accent-glass: rgba(37, 99, 235, 0.08);
   --glass: rgba(255, 255, 255, 0.6);
+  --danger-bg: #fee2e2;
+  --danger-text: #b91c1c;
+  --success-bg: #d1fae5;
+  --success-text: #065f46;
+  --input-bg: #fbfdff;
+  --footer-bg: #1e3a8a;
+  --footer-text: #e0e7ff;
   --radius: 12px;
+}
+
+/* Dark theme overrides */
+[data-theme="dark"] {
+  --bg: #0b1220;
+  --bg-2: #071022;
+  --card: #0f1724;
+  --text: #e6eef8;
+  --muted: #9aa6b2;
+  --border: rgba(255,255,255,0.04);
+  --border-2: rgba(255,255,255,0.03);
+  --border-muted: rgba(255,255,255,0.06);
+  --accent: #3b82f6;
+  --accent-600: #60a5fa;
+  --accent-glass: rgba(99, 102, 241, 0.08);
+  --glass: rgba(255, 255, 255, 0.03);
+  --danger-bg: rgba(185, 28, 28, 0.08);
+  --danger-text: #fecaca;
+  --success-bg: rgba(16,185,129,0.08);
+  --success-text: #bbf7d0;
+  --input-bg: #0b1226;
+  --footer-bg: #0f172a;
+  --footer-text: #93c5fd;
 }
 
 * {
@@ -24,8 +60,8 @@ body {
   margin: 0;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     Roboto, "Helvetica Neue", Arial;
-  background: linear-gradient(180deg, #f7f9ff 0%, var(--bg) 100%);
-  color: #0f172a;
+  background: linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 100%);
+  color: var(--text);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -102,7 +138,7 @@ body {
   padding: 1.15rem;
   border-radius: var(--radius);
   box-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
-  border: 1px solid rgba(15, 23, 42, 0.03);
+  border: 1px solid var(--border-2);
 }
 
 /* Forms */
@@ -125,9 +161,10 @@ body {
   width: 100%;
   padding: 0.85rem;
   border-radius: 10px;
-  border: 1px solid #e6eef8;
-  background: linear-gradient(180deg, #ffffff, #fbfdff);
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--card), var(--input-bg));
   margin-bottom: 1rem;
+  color: var(--text);
 }
 .auth-form .error {
   color: #b91c1c;
@@ -189,15 +226,17 @@ body {
   width: 100%;
   padding: 0.6rem;
   border-radius: 8px;
-  border: 1px solid #eef4ff;
+  border: 1px solid var(--border-2);
   margin-bottom: 0.75rem;
+  background: var(--card);
+  color: var(--text);
 }
 .event-form input[type="color"] {
   padding: 0.3rem;
   height: 42px;
 }
 .event-form select {
-  background-color: white;
+  background-color: var(--card);
 }
 .form-actions {
   display: flex;
@@ -231,7 +270,7 @@ body {
   padding: 0.85rem;
   border-radius: 10px;
   margin-bottom: 0.6rem;
-  border: 1px solid rgba(15, 23, 42, 0.03);
+  border: 1px solid var(--border-2);
   transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 .event-item:hover {
@@ -254,8 +293,8 @@ body {
   padding: 1rem;
   border-radius: 10px;
   color: var(--muted);
-  background: linear-gradient(180deg, #ffffff, #fbfdff);
-  border: 1px solid rgba(15, 23, 42, 0.03);
+  background: linear-gradient(180deg, var(--card), var(--input-bg));
+  border: 1px solid var(--border-2);
 }
 
 /* Confirm dialog */
@@ -285,10 +324,10 @@ body {
   gap: 1rem;
 }
 .hero {
-  background: linear-gradient(135deg, #eef6ff, #ffffff);
+  background: linear-gradient(135deg, var(--input-bg), var(--card));
   padding: 1.25rem;
   border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.03);
+  border: 1px solid var(--border-2);
   display: flex;
   align-items: center;
   gap: 16px;
@@ -305,9 +344,9 @@ body {
 .event-card {
   padding: 1.5rem;
   border-radius: 12px;
-  background: linear-gradient(180deg, #fff, #fbfdff);
+  background: linear-gradient(180deg, var(--card), var(--input-bg));
   box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
-  border: 1px solid rgba(15, 23, 42, 0.03);
+  border: 1px solid var(--border-2);
   transition: transform 0.2s ease;
 }
 .event-card:hover {
@@ -335,25 +374,25 @@ body {
   padding: 1rem;
   border-radius: 12px;
   box-shadow: 0 20px 60px rgba(2, 6, 23, 0.4);
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  color: #0f172a;
+  border: 1px solid var(--border-2);
+  color: var(--text);
 }
 .modal-card .details img {
   height: 400px;
 }
 .modal-card .details {
-  color: #0f172a;
+  color: var(--text);
 }
 .modal-card .booking-content {
-  color: #0f172a;
+  color: var(--text);
 }
 .modal-card h2,
 .modal-card h3,
 .modal-card h4 {
-  color: #0f172a;
+  color: var(--text);
 }
 .modal-card p {
-  color: #0f172a;
+  color: var(--text);
 }
 .modal-card .meta {
   color: var(--muted);
@@ -393,7 +432,7 @@ body {
 .event-card .price {
   margin-top: 0.9rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--text);
 }
 
 /* Grid layout for the main view */
@@ -427,17 +466,17 @@ body {
 
 /* Details panel */
 .details {
-  color: #0f172a;
+  color: var(--text);
 }
 .details h3 {
   margin-top: 0;
-  color: #0f172a;
+  color: var(--text);
 }
 .details h2 {
-  color: #0f172a;
+  color: var(--text);
 }
 .details p {
-  color: #0f172a;
+  color: var(--text);
 }
 
 /* Responsive */
@@ -449,4 +488,129 @@ body {
   .right {
     width: 100%;
   }
+}
+
+/* Utility overrides for third-party/tailwind classes when in dark theme */
+[data-theme="dark"] .bg-white {
+  background-color: var(--card) !important;
+  color: var(--text) !important;
+}
+
+[data-theme="dark"] .glass {
+  background: rgba(255,255,255,0.02) !important;
+}
+
+/* Themed form controls used across components */
+.themed-input {
+  background: var(--input-bg) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+.themed-input::placeholder {
+  color: var(--muted) !important;
+  opacity: 1;
+}
+.themed-textarea {
+  background: var(--input-bg) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+.themed-select {
+  background: var(--input-bg) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+.themed-file {
+  background: var(--input-bg) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+
+/* Event type tiles */
+.type-tile {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  border: 1px solid var(--border-muted);
+  background: var(--card);
+  color: var(--muted);
+}
+.type-tile.selected {
+  border: 2px solid var(--accent) !important;
+  background: var(--accent-glass) !important;
+  color: var(--accent) !important;
+}
+.type-tile.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Small helper for badge/tag colors */
+.tag-pill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--accent-glass);
+  color: var(--accent);
+}
+
+/* Dark mode overrides for Tailwind utility classes */
+[data-theme="dark"] .bg-gray-50 {
+  background-color: var(--input-bg) !important;
+  color: var(--text) !important;
+}
+
+[data-theme="dark"] .bg-gray-100 {
+  background-color: var(--card) !important;
+  color: var(--text) !important;
+}
+
+[data-theme="dark"] .bg-base-200 {
+  background-color: var(--card) !important;
+  color: var(--text) !important;
+}
+
+[data-theme="dark"] .border-base-300 {
+  border-color: var(--border-muted) !important;
+}
+
+[data-theme="dark"] .bg-primary\/10 {
+  background-color: var(--accent-glass) !important;
+}
+
+/* Adjust input/textarea/select styling in dark mode */
+[data-theme="dark"] .input,
+[data-theme="dark"] .textarea,
+[data-theme="dark"] .select,
+[data-theme="dark"] .file-input {
+  background-color: var(--input-bg) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+[data-theme="dark"] .input::placeholder,
+[data-theme="dark"] .textarea::placeholder {
+  color: var(--muted) !important;
+  opacity: 1 !important;
+}
+
+/* Error button always red */
+.btn-error {
+  --btn-color: #dc2626 !important;
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .btn-error {
+  --btn-color: #dc2626 !important;
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: #ffffff !important;
 }
