@@ -40,7 +40,9 @@ func TestMain(m *testing.M) {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
-		role TEXT DEFAULT 'user'
+		role TEXT DEFAULT 'user',
+		name TEXT,
+		preferred_event_types TEXT
 	);
 	CREATE TABLE IF NOT EXISTS events (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,6 +56,7 @@ func TestMain(m *testing.M) {
 		price REAL,
 		priority TEXT,
 		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
+		event_type TEXT,
 		FOREIGN KEY (userID) REFERENCES users(id)
 	);
 	CREATE TABLE IF NOT EXISTS registrations (
@@ -61,7 +64,8 @@ func TestMain(m *testing.M) {
 		event_id INTEGER,
 		user_id INTEGER,
 		FOREIGN KEY (event_id) REFERENCES events(id),
-		FOREIGN KEY (user_id) REFERENCES users(id)
+		FOREIGN KEY (user_id) REFERENCES users(id),
+		UNIQUE(event_id, user_id)
 	);
 	`
 	_, err = db.DB.Exec(createTables)

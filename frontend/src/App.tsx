@@ -37,7 +37,7 @@ export default function App() {
       
       const isBackendReachable = await api.checkBackendHealth()
       if (!isBackendReachable) {
-        setError('Cannot connect to backend server. Please make sure the backend is running on http://localhost:8080')
+        setError('Cannot connect to backend server. Please make sure the backend is running on http://localhost:8000')
         setLoading(false)
         return
       }
