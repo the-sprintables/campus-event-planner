@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Event } from "../types";
-import { FaChevronDown } from "react-icons/fa";
 
 function uid() {
   return Math.random().toString(36).slice(2, 9);
@@ -51,9 +50,8 @@ export default function EventForm({
     "available" | "almost-full" | "full"
   >("available");
 
-  // Select multiple event types
+  // Select multiple event types (max 2)
   const [selectedTypes, setSelectedTypes] = useState<Record<string, boolean>>({});
-  const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
   const eventTypes = [
     "Sports & Fitness",
     "Music & Entertainment",
@@ -67,16 +65,33 @@ export default function EventForm({
     "Health & Wellness",
   ];
   const handleToggleType = (type: string) => {
-    setSelectedTypes(prev => ({
-      ...prev,
-      [type]: !prev[type]
-    }));
+    setSelectedTypes(prev => {
+      const isCurrentlySelected = prev[type] || false;
+      const currentlySelectedCount = Object.keys(prev).filter(t => prev[t]).length;
+      
+      // If unchecking, allow it
+      if (isCurrentlySelected) {
+        return {
+          ...prev,
+          [type]: false
+        };
+      }
+      
+      // If checking and already at max (2), don't allow
+      if (currentlySelectedCount >= 2) {
+        return prev;
+      }
+      
+      // Otherwise, allow checking
+      return {
+        ...prev,
+        [type]: true
+      };
+    });
   };
   
   const selectedTypesList = Object.keys(selectedTypes).filter(type => selectedTypes[type]);
-  const displayText = selectedTypesList.length > 0 
-    ? `${selectedTypesList.length} type${selectedTypesList.length > 1 ? 's' : ''} selected`
-    : "Select Event Types";
+  const maxReached = selectedTypesList.length >= 2;
 
   // Tickets input field
   const [selectedTickets, setSelectedTickets] = useState<string>("");
@@ -152,178 +167,226 @@ export default function EventForm({
   }
 
   return (
-    <form className="event-form ps-4 py-4" onSubmit={submit}>
-      <h2 className="text-2xl font-bold text-center text-primary">Create an Event</h2>
-      <label>
-        Title
+    <form className="space-y-4" onSubmit={submit}>
+      <div className="form-control w-full">
+        <label className="label">
+          <span className="label-text font-semibold">Title</span>
+          <span className="label-text-alt text-error">*</span>
+        </label>
         <input
+          type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           required
           placeholder="Event Title"
+          className="input input-bordered w-full bg-gray-50"
         />
-      </label>
+      </div>
       
-      <label>
-        Date
+      <div className="form-control w-full">
+        <label className="label">
+          <span className="label-text font-semibold">Date</span>
+          <span className="label-text-alt text-error">*</span>
+        </label>
         <input
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
           required
+          className="input input-bordered w-full bg-gray-50"
         />
-      </label>
-      <label>
-        Location
-        <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location"/>
-      </label>
-      <label>
-        Description
+      </div>
+
+      <div className="form-control w-full">
+        <label className="label">
+          <span className="label-text font-semibold">Location</span>
+        </label>
+        <input
+          type="text"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          placeholder="Event Location"
+          className="input input-bordered w-full bg-gray-50"
+        />
+      </div>
+
+      <div className="form-control w-full">
+        <label className="label">
+          <span className="label-text font-semibold">Description</span>
+        </label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          placeholder="Event Description"
+          className="textarea textarea-bordered h-24 bg-gray-50"
         />
-      </label>
-      <label>
-        Price (EUR)
+      </div>
+
+      <div className="form-control w-full">
+        <label className="label">
+          <span className="label-text font-semibold">Price (EUR)</span>
+        </label>
         <input
           type="number"
           min="0"
           step="0.01"
           value={price}
-          placeholder="Ticket Price"
+          placeholder="0.00"
           onChange={(e) => setPrice(e.target.value)}
+          className="input input-bordered w-full bg-gray-50"
         />
-      </label>
-      <label>
-        Event Image
-        <div className="file-input-container">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={async (e) => {
-              setImageError("");
-              const file = e.target.files?.[0];
-              if (!file) return;
+      </div>
 
-              try {
-                const data = await handleImageUpload(file);
-                setImageData(data);
-              } catch (err) {
-                setImageError(
-                  err instanceof Error ? err.message : "Failed to upload image"
-                );
-              }
-            }}
-          />
-          {imageError && <div className="error">{imageError}</div>}
-        </div>
-      </label>
+      <div className="form-control w-full">
+        <label className="label">
+          <span className="label-text font-semibold">Event Image</span>
+        </label>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={async (e) => {
+            setImageError("");
+            const file = e.target.files?.[0];
+            if (!file) return;
+
+            try {
+              const data = await handleImageUpload(file);
+              setImageData(data);
+            } catch (err) {
+              setImageError(
+                err instanceof Error ? err.message : "Failed to upload image"
+              );
+            }
+          }}
+          className="file-input file-input-bordered w-full bg-gray-50"
+        />
+        {imageError && (
+          <label className="label">
+            <span className="label-text-alt text-error">{imageError}</span>
+          </label>
+        )}
+      </div>
+
       {imageData && (
-        <div style={{ marginBottom: "1rem" }}>
-          <img
-            src={imageData}
-            alt="Event preview"
-            style={{
-              maxWidth: "100%",
-              height: "200px",
-              objectFit: "cover",
-              borderRadius: "8px",
-            }}
-          />
-          <button
-            type="button"
-            className="btn ghost"
-            onClick={() => setImageData("")}
-            style={{ marginTop: "0.5rem" }}
-          >
-            Remove image
-          </button>
+        <div className="card bg-base-200">
+          <div className="card-body p-4">
+            <img
+              src={imageData}
+              alt="Event preview"
+              className="w-full h-48 object-cover rounded-lg"
+            />
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost btn-error mt-2"
+              onClick={() => setImageData("")}
+            >
+              Remove Image
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Event types - Dropdown with checkboxes */}
-      <label>
-        Event Types (Select multiple)
-        <div className="flex flex-col gap-2 w-64 relative border-2 rounded-md mb-2" style={{ marginTop: '8px' }}>
-          <div
-            className="input input-bordered w-full flex justify-between items-center cursor-pointer bg-white"
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-          >
-            <span>{displayText}</span>
-            <FaChevronDown className="ml-2 text-gray-500" />
-          </div>
-
-          {dropdownOpen && (
-            <ul className="absolute top-full left-0 z-50 w-full shadow-md rounded-md mt-1 border border-gray-300 bg-white max-h-64 overflow-y-auto">
-              {eventTypes.map((type) => (
-                <li key={type}>
-                  <label
-                    className="w-full text-left px-4 py-2 hover:bg-primary hover:text-white rounded-md flex items-center gap-2 cursor-pointer"
-                    style={{ display: 'flex', alignItems: 'center' }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedTypes[type] || false}
-                      onChange={() => handleToggleType(type)}
-                      onClick={(e) => e.stopPropagation()}
-                      style={{ cursor: 'pointer' }}
-                    />
-                    <span>{type}</span>
-                  </label>
-                </li>
-              ))}
-            </ul>
-          )}
+      {/* Event types - Checkbox grid (max 2 selections) */}
+      <div className="form-control w-full">
+        <label className="label">
+          <span className="label-text font-semibold">Event Types</span>
+          <span className="label-text-alt">Select up to 2</span>
+        </label>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+          {eventTypes.map((type) => {
+            const isSelected = selectedTypes[type] || false;
+            const isDisabled = !isSelected && maxReached;
+            
+            return (
+              <label
+                key={type}
+                className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                  isSelected
+                    ? "border-primary bg-primary/10"
+                    : "border-base-300 bg-gray-50 hover:border-primary/50"
+                } ${isDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => handleToggleType(type)}
+                  disabled={isDisabled}
+                  className="checkbox checkbox-primary checkbox-sm"
+                />
+                <span className={`text-sm ${isSelected ? "font-semibold text-primary" : ""}`}>
+                  {type}
+                </span>
+              </label>
+            );
+          })}
         </div>
-      </label>
+        {maxReached && (
+          <label className="label">
+            <span className="label-text-alt text-warning">
+              Maximum of 2 event types selected
+            </span>
+          </label>
+        )}
+      </div>
 
       {/* Tickets Input Field */}
-      <label>
-        Number of Tickets
+      <div className="form-control w-full">
+        <label className="label">
+          <span className="label-text font-semibold">Number of Tickets</span>
+        </label>
         <input
           type="number"
           min="0"
           value={selectedTickets}
           onChange={(e) => setSelectedTickets(e.target.value)}
           placeholder="Enter number of tickets"
+          className="input input-bordered w-full bg-gray-50"
         />
-      </label>
+      </div>
 
-      <label>
-        Background Color (used if no image uploaded)
+      <div className="form-control w-full">
+        <label className="label">
+          <span className="label-text font-semibold">Background Color</span>
+          <span className="label-text-alt">Used if no image uploaded</span>
+        </label>
         <input
           type="color"
           value={color}
           onChange={(e) => setColor(e.target.value)}
+          className="input input-bordered w-full h-12 bg-gray-50"
         />
-      </label>
-      <label>
-        Priority Status
+      </div>
+
+      <div className="form-control w-full">
+        <label className="label">
+          <span className="label-text font-semibold">Priority Status</span>
+        </label>
         <select
           value={priority}
           onChange={(e) =>
             setPriority(e.target.value as "available" | "almost-full" | "full")
           }
+          className="select select-bordered w-full bg-gray-50"
         >
           <option value="available">Available</option>
           <option value="almost-full">Almost Full</option>
           <option value="full">Full</option>
         </select>
-      </label>
-      <div className="form-actions">
-        <button type="submit" className="border-2 rounded-md p-3 bg-primary text-white hover:bg-secondary">
-          {editingEvent ? "Save changes" : "Add event"}
-        </button>
+      </div>
+
+      <div className="flex gap-3 justify-end pt-4">
         {editingEvent && (
           <button
             type="button"
-            className="btn ghost"
+            className="btn btn-ghost"
             onClick={() => onUpdate?.(editingEvent)}
           >
             Cancel
           </button>
         )}
+        <button type="submit" className="btn btn-primary">
+          {editingEvent ? "Save Changes" : "Create Event"}
+        </button>
       </div>
     </form>
   );

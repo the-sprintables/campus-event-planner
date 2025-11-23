@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom'
 import * as api from './api'
 import Feed from './pages/Feed'
 import Footer from './pages/Footer'
+import Profile from './pages/Profile'
 
 export default function App() {
   const navigate = useNavigate()
@@ -55,16 +56,17 @@ export default function App() {
     fetchEvents()
   }, [])
 
-  async function addEvent(e: Event) {
+  async function addEvent(e: Event): Promise<{ success: boolean; error?: string }> {
     const result = await api.createEvent(e)
     if (result.ok && result.event) {
       setEvents(prev => [result.event!, ...prev])
+      return { success: true }
     } else {
-      alert(result.error || 'Failed to create event')
+      return { success: false, error: result.error || 'Failed to create event' }
     }
   }
 
-  async function updateEvent(updated: Event) {
+  async function updateEvent(updated: Event): Promise<{ success: boolean; error?: string }> {
     const result = await api.updateEvent(updated.id, updated)
     if (result.ok) {
       // Refresh events from server to get latest data
@@ -72,8 +74,9 @@ export default function App() {
       if (fetchResult.ok && fetchResult.events) {
         setEvents(fetchResult.events)
       }
+      return { success: true }
     } else {
-      alert(result.error || 'Failed to update event')
+      return { success: false, error: result.error || 'Failed to update event' }
     }
   }
 
@@ -105,6 +108,7 @@ export default function App() {
           )}
           {user && (
             <>
+              <Link to="/profile">Profile</Link> |
               <span>Welcome, {user.email}</span>
               <button onClick={handleLogout} style={{ marginLeft: 8 }}>Logout</button>
             </>
@@ -128,6 +132,11 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/feed" element={<Feed />} />
+          <Route path="/profile" element={(
+            <RequireAuth>
+              <Profile />
+            </RequireAuth>
+          )} />
         </Routes>
         
       </main>

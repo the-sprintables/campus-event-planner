@@ -16,7 +16,7 @@ export default function Register() {
       setError("Please fill all fields");
       return;
     }
-    const res = await register(email, password);
+    const res = await register(email, password, name);
     if (!res.ok) {
       setError(res.error ?? "Registration error");
       return;

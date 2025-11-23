@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import EventDetails from '../components/EventDetails'
 import BookingModal from '../components/BookingModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { Event } from '../types'
 import { currentUser } from '../auth'
-import { unregisterFromEvent } from '../api'
+import { unregisterFromEvent, checkEventRegistration, getUserProfile } from '../api'
 
 function getPriorityLabel(priority: string = "available") {
   switch (priority) {
@@ -31,6 +31,10 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
   const [eventToCancel, setEventToCancel] = useState<string | null>(null)
   const [showFilter, setShowFilter] = useState(false)
   const [selectedEventTypes, setSelectedEventTypes] = useState<Record<string, boolean>>({})
+  const [viewMode, setViewMode] = useState<'suggested' | 'all'>('all') // 'suggested' or 'all'
+  const [userPreferredTypes, setUserPreferredTypes] = useState<string[]>([]) // User's preferred event types (multiple)
+  const checkedEventIdsRef = useRef<Set<string>>(new Set())
+  const lastCheckedEventIdsRef = useRef<string>('')
   
   const user = currentUser()
   
@@ -48,29 +52,162 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
     "Health & Wellness",
   ]
 
-  // Update local events when props change
+  // Load user's preferred event types from backend on mount
   useEffect(() => {
-    setLocalEvents(events)
-  }, [events])
-  
-  // Filter events based on selected event types
-  useEffect(() => {
-    const selectedTypes = Object.keys(selectedEventTypes).filter(type => selectedEventTypes[type])
+    async function loadPreferredEventTypes() {
+      if (user?.email) {
+        // First try to load from backend
+        const profileResult = await getUserProfile()
+        if (profileResult.ok && profileResult.profile) {
+          // Get all preferred event types
+          if (profileResult.profile.preferredEventTypes && profileResult.profile.preferredEventTypes.length > 0) {
+            setUserPreferredTypes(profileResult.profile.preferredEventTypes)
+            return
+          }
+        }
+        
+        // Fallback to localStorage for backward compatibility
+        const savedTypes = localStorage.getItem(`user_event_types_${user.email}`)
+        if (savedTypes) {
+          try {
+            const typesArray = JSON.parse(savedTypes) as string[]
+            if (typesArray.length > 0) {
+              setUserPreferredTypes(typesArray)
+              return
+            }
+          } catch (error) {
+            console.error('Error parsing saved event types:', error)
+          }
+        }
+        
+        // Also check single type format for backward compatibility
+        const savedType = localStorage.getItem(`user_preferred_event_type_${user.email}`)
+        if (savedType) {
+          setUserPreferredTypes([savedType])
+        }
+      }
+    }
     
-    if (selectedTypes.length === 0) {
-      // No filters selected, show all events
-      setLocalEvents(events)
-    } else {
-      // Filter events by selected types
-      const filtered = events.filter(event => {
+    loadPreferredEventTypes()
+  }, [user])
+  
+  // Note: We don't need to update localEvents here anymore
+  // The filtering effect below handles updating localEvents based on viewMode and filters
+  
+  // Check registration status for all events when they're loaded
+  // This effect only updates registration status, not the event list itself
+  useEffect(() => {
+    async function checkRegistrations() {
+      if (!user || user.role === 'admin') {
+        // Admins don't need registration status, and unauthenticated users can't register
+        return
+      }
+      
+      // Get current event IDs as a sorted string for comparison
+      const currentEventIdsString = events.map(e => e.id).sort().join(',')
+      
+      // Check if we've already checked these exact events
+      if (currentEventIdsString === lastCheckedEventIdsRef.current && currentEventIdsString !== '') {
+        // Already checked these events, skip
+        return
+      }
+      
+      // Only check events we haven't checked yet
+      const eventsToCheck = events.filter(event => !checkedEventIdsRef.current.has(event.id))
+      
+      if (eventsToCheck.length === 0 && currentEventIdsString === lastCheckedEventIdsRef.current) {
+        // All events already checked and no new events
+        return
+      }
+      
+      // Check registration status for new events in parallel
+      const registrationChecks = eventsToCheck.map(async (event) => {
+        const result = await checkEventRegistration(event.id)
+        if (result.ok && result.data) {
+          return { eventId: event.id, isRegistered: result.data.isRegistered }
+        }
+        return { eventId: event.id, isRegistered: false }
+      })
+      
+      const results = await Promise.all(registrationChecks)
+      
+      // Mark these events as checked
+      eventsToCheck.forEach(event => checkedEventIdsRef.current.add(event.id))
+      
+      // Update the last checked event IDs string
+      lastCheckedEventIdsRef.current = currentEventIdsString
+      
+      // Update local events with registration status - preserve current filtered list
+      setLocalEvents(prevEvents => 
+        prevEvents.map(event => {
+          const registrationResult = results.find(r => r.eventId === event.id)
+          if (registrationResult) {
+            return { ...event, isRegistered: registrationResult.isRegistered }
+          }
+          // If event was already checked before, preserve its isRegistered status
+          return event
+        })
+      )
+    }
+    
+    if (events.length > 0) {
+      checkRegistrations()
+    }
+  }, [events, user])
+  
+  // Filter events based on view mode and selected event types
+  // This effect runs whenever viewMode, filters, or events change
+  useEffect(() => {
+    let filteredEvents = [...events] // Start with a copy of all events
+    
+    // If viewMode is 'all', show all events (but can still be filtered by dropdown)
+    if (viewMode === 'all') {
+      filteredEvents = [...events]
+    }
+    // If viewMode is 'suggested', filter by user's preferred event types
+    else if (viewMode === 'suggested') {
+      if (userPreferredTypes.length > 0) {
+        // Filter by user's preferred event types - show events that match any of the preferred types
+        filteredEvents = events.filter(event => {
+          if (!event.eventType) return false;
+          // Handle both string and array formats
+          const eventTypes = Array.isArray(event.eventType) ? event.eventType : [event.eventType];
+          // Check if any of the event's types match any of the user's preferred types
+          return eventTypes.some(type => userPreferredTypes.includes(type));
+        })
+      } else {
+        // No user preferences, show no events in suggested mode
+        filteredEvents = []
+      }
+    }
+    
+    // Apply filter dropdown selections if any (works for both 'suggested' and 'all' modes)
+    const selectedTypes = Object.keys(selectedEventTypes).filter(type => selectedEventTypes[type])
+    if (selectedTypes.length > 0) {
+      // Further filter by selected types in the filter dropdown
+      filteredEvents = filteredEvents.filter(event => {
         if (!event.eventType) return false;
         // Handle both string and array formats
         const eventTypes = Array.isArray(event.eventType) ? event.eventType : [event.eventType];
         return eventTypes.some(type => selectedTypes.includes(type));
       })
-      setLocalEvents(filtered)
     }
-  }, [selectedEventTypes, events])
+    
+    // Update local events with filtered list, preserving registration status from previous state
+    setLocalEvents(prevEvents => {
+      // Create a map of previous events by ID to preserve registration status
+      const prevEventsMap = new Map(prevEvents.map(e => [e.id, e]))
+      
+      // Map filtered events, preserving registration status if available
+      return filteredEvents.map(event => {
+        const prevEvent = prevEventsMap.get(event.id)
+        if (prevEvent && prevEvent.isRegistered !== undefined) {
+          return { ...event, isRegistered: prevEvent.isRegistered }
+        }
+        return event
+      })
+    })
+  }, [viewMode, userPreferredTypes, selectedEventTypes, events])
   
   // Close filter dropdown when clicking outside
   useEffect(() => {
@@ -92,6 +229,20 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
       ...prev,
       [eventType]: !prev[eventType]
     }))
+  }
+  
+  const handleSuggestedEvents = () => {
+    if (viewMode !== 'suggested') {
+      setViewMode('suggested')
+    }
+  }
+  
+  const handleViewAllEvents = () => {
+    if (viewMode !== 'all') {
+      // Clear all filters when viewing all events
+      setSelectedEventTypes({})
+      setViewMode('all')
+    }
   }
 
   const handleRegistrationChange = (eventId: string, isRegistered: boolean) => {
@@ -220,8 +371,75 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
   return (
     <div className="events-page mb-20">
       <section className="left px-8 my-8">
-        {/* Filter button and filter panel */}
-        <div data-filter-container style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px', position: 'relative' }}>
+        {/* View mode buttons and filter button */}
+        <div data-filter-container style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', position: 'relative' }}>
+          {/* Left side: View mode buttons */}
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <button
+              className="btn"
+              onClick={handleSuggestedEvents}
+              style={{
+                backgroundColor: viewMode === 'suggested' ? '#2563eb' : 'transparent',
+                color: viewMode === 'suggested' ? 'white' : '#2563eb',
+                border: '2px solid #2563eb',
+                fontWeight: '600',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                cursor: viewMode === 'suggested' ? 'default' : 'pointer',
+                transition: 'all 0.2s ease-in-out',
+                opacity: viewMode === 'suggested' ? 1 : 0.8,
+                transform: viewMode === 'suggested' ? 'scale(1.02)' : 'scale(1)',
+                boxShadow: viewMode === 'suggested' ? '0 2px 8px rgba(37, 99, 235, 0.3)' : 'none'
+              }}
+              onMouseEnter={(e) => {
+                if (viewMode !== 'suggested') {
+                  e.currentTarget.style.opacity = '1'
+                  e.currentTarget.style.transform = 'scale(1.05)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (viewMode !== 'suggested') {
+                  e.currentTarget.style.opacity = '0.8'
+                  e.currentTarget.style.transform = 'scale(1)'
+                }
+              }}
+            >
+              SUGGESTED EVENTS
+            </button>
+            <button
+              className="btn"
+              onClick={handleViewAllEvents}
+              style={{
+                backgroundColor: viewMode === 'all' ? '#2563eb' : 'transparent',
+                color: viewMode === 'all' ? 'white' : '#2563eb',
+                border: '2px solid #2563eb',
+                fontWeight: '600',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                cursor: viewMode === 'all' ? 'default' : 'pointer',
+                transition: 'all 0.2s ease-in-out',
+                opacity: viewMode === 'all' ? 1 : 0.8,
+                transform: viewMode === 'all' ? 'scale(1.02)' : 'scale(1)',
+                boxShadow: viewMode === 'all' ? '0 2px 8px rgba(37, 99, 235, 0.3)' : 'none'
+              }}
+              onMouseEnter={(e) => {
+                if (viewMode !== 'all') {
+                  e.currentTarget.style.opacity = '1'
+                  e.currentTarget.style.transform = 'scale(1.05)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (viewMode !== 'all') {
+                  e.currentTarget.style.opacity = '0.8'
+                  e.currentTarget.style.transform = 'scale(1)'
+                }
+              }}
+            >
+              VIEW ALL EVENTS
+            </button>
+          </div>
+          
+          {/* Right side: Filter button */}
           <button
             className="btn ghost"
             onClick={() => setShowFilter(!showFilter)}
@@ -245,36 +463,43 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
               minWidth: '200px'
             }}>
               <h4 style={{ margin: '0 0 12px 0', fontSize: '1rem', fontWeight: 'bold' }}>Filter by Event Type</h4>
+              
               {eventTypes.length === 0 ? (
                 <p style={{ color: 'var(--muted)', fontSize: '0.9em' }}>No event types available</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {eventTypes.map(type => (
-                    <label
-                      key={type}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        cursor: 'pointer',
-                        padding: '4px 0'
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedEventTypes[type] || false}
-                        onChange={() => toggleEventType(type)}
-                        style={{ cursor: 'pointer' }}
-                      />
-                      <span>{type}</span>
-                    </label>
-                  ))}
+                  {eventTypes.map(type => {
+                    const isChecked = Boolean(selectedEventTypes[type])
+                    return (
+                      <label
+                        key={type}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          cursor: 'pointer',
+                          padding: '4px 0'
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleEventType(type)}
+                          style={{ cursor: 'pointer' }}
+                        />
+                        <span>{type}</span>
+                      </label>
+                    )
+                  })}
                 </div>
               )}
               {Object.keys(selectedEventTypes).some(type => selectedEventTypes[type]) && (
                 <button
                   className="btn ghost"
-                  onClick={() => setSelectedEventTypes({})}
+                  onClick={() => {
+                    setSelectedEventTypes({})
+                    // If in suggested mode, stay in suggested mode but clear the additional filters
+                  }}
                   style={{ marginTop: '12px', width: '100%', fontSize: '0.9em' }}
                 >
                   Clear Filters

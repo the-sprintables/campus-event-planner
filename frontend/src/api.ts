@@ -11,7 +11,7 @@ export interface BackendEvent {
   Color?: string;
   Price?: number;
   Priority?: string;
-  EventType?: string;
+  eventType?: string; // Backend sends lowercase "eventType" in JSON
   TicketsAvailable?: number;
 }
 
@@ -96,7 +96,7 @@ function backendToFrontendEvent(be: BackendEvent): Event {
     priority:
       (be.Priority as "available" | "almost-full" | "full") || "available",
     // Parse eventType - can be comma-separated string or single string
-    eventType: be.EventType ? (be.EventType.includes(',') ? be.EventType.split(',').map(t => t.trim()) : be.EventType) : undefined,
+    eventType: be.eventType ? (be.eventType.includes(',') ? be.eventType.split(',').map(t => t.trim()) : be.eventType) : undefined,
     ticketsAvailable: be.TicketsAvailable ?? 0,
     capacity: be.TicketsAvailable, // Map TicketsAvailable to capacity
   };
@@ -136,7 +136,7 @@ function frontendToBackendEvent(
     Priority: fe.priority || "available",
     // Convert array to comma-separated string for backend
     // Backend expects lowercase "eventType" in JSON
-    EventType: Array.isArray(fe.eventType) ? fe.eventType.join(',') : (fe.eventType || ''),
+    eventType: Array.isArray(fe.eventType) ? fe.eventType.join(',') : (fe.eventType || ''),
     TicketsAvailable: fe.ticketsAvailable ?? 0,
   };
 }
@@ -145,7 +145,8 @@ function frontendToBackendEvent(
 
 export async function register(
   email: string,
-  password: string
+  password: string,
+  name: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const response = await fetch(`${API_BASE_URL}/signup`, {
@@ -153,7 +154,7 @@ export async function register(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, name }),
     });
 
     if (!response.ok) {
@@ -251,6 +252,81 @@ export async function updatePassword(
   }
 }
 
+export interface UserProfile {
+  id: number;
+  email: string;
+  name: string;
+  role: string;
+  preferredEventTypes: string[];
+}
+
+export async function getUserProfile(): Promise<{
+  ok: boolean;
+  profile?: UserProfile;
+  error?: string;
+}> {
+  const token = getAuthToken();
+  if (!token) {
+    return { ok: false, error: "Not authenticated" };
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/profile`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await handleApiError(
+        response,
+        "Failed to fetch profile"
+      );
+      return { ok: false, error: errorMessage };
+    }
+
+    const profile: UserProfile = await response.json();
+    return { ok: true, profile };
+  } catch (error) {
+    return { ok: false, error: handleNetworkError(error, "fetch profile") };
+  }
+}
+
+export async function updateUserProfile(
+  name: string,
+  preferredEventTypes: string[]
+): Promise<{ ok: boolean; error?: string }> {
+  const token = getAuthToken();
+  if (!token) {
+    return { ok: false, error: "Not authenticated" };
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/profile`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name, preferredEventTypes }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await handleApiError(
+        response,
+        "Failed to update profile"
+      );
+      return { ok: false, error: errorMessage };
+    }
+
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: handleNetworkError(error, "update profile") };
+  }
+}
+
 // Events API
 
 export async function getEvents(): Promise<{
@@ -335,7 +411,7 @@ export async function createEvent(
       Color: backendEvent.Color || "",
       Priority: backendEvent.Priority || "available",
       TicketsAvailable: backendEvent.TicketsAvailable ?? 0,
-      eventType: backendEvent.EventType || "", // Backend expects lowercase "eventType"
+      eventType: backendEvent.eventType || "", // Backend expects lowercase "eventType"
     };
     
     // Only include Price if it's defined (backend expects *float64, so null/undefined should be omitted)
@@ -403,7 +479,7 @@ export async function updateEvent(
       Color: backendEvent.Color || "",
       Priority: backendEvent.Priority || "available",
       TicketsAvailable: backendEvent.TicketsAvailable ?? 0,
-      eventType: backendEvent.EventType || "", // Backend expects lowercase "eventType"
+      eventType: backendEvent.eventType || "", // Backend expects lowercase "eventType"
     };
     
     // Only include Price if it's defined (backend expects *float64, so null/undefined should be omitted)
