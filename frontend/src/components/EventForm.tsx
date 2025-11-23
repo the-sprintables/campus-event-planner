@@ -179,7 +179,7 @@ export default function EventForm({
           onChange={(e) => setTitle(e.target.value)}
           required
           placeholder="Event Title"
-          className="input input-bordered w-full bg-gray-50"
+          className="input input-bordered w-full themed-input"
         />
       </div>
       
@@ -193,7 +193,7 @@ export default function EventForm({
           value={date}
           onChange={(e) => setDate(e.target.value)}
           required
-          className="input input-bordered w-full bg-gray-50"
+          className="input input-bordered w-full themed-input"
         />
       </div>
 
@@ -206,19 +206,19 @@ export default function EventForm({
           value={location}
           onChange={(e) => setLocation(e.target.value)}
           placeholder="Event Location"
-          className="input input-bordered w-full bg-gray-50"
+          className="input input-bordered w-full themed-input"
         />
       </div>
 
       <div className="form-control w-full">
         <label className="label">
-          <span className="label-text font-semibold">Description</span>
+          <span className="label-text font-semibold">Description: </span>
         </label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Event Description"
-          className="textarea textarea-bordered h-24 bg-gray-50"
+          className="textarea textarea-bordered h-24 themed-textarea"
         />
       </div>
 
@@ -233,7 +233,7 @@ export default function EventForm({
           value={price}
           placeholder="0.00"
           onChange={(e) => setPrice(e.target.value)}
-          className="input input-bordered w-full bg-gray-50"
+          className="input input-bordered w-full themed-input"
         />
       </div>
 
@@ -258,7 +258,7 @@ export default function EventForm({
               );
             }
           }}
-          className="file-input file-input-bordered w-full bg-gray-50"
+          className="file-input file-input-bordered w-full themed-file"
         />
         {imageError && (
           <label className="label">
@@ -286,7 +286,6 @@ export default function EventForm({
         </div>
       )}
 
-      {/* Event types - Checkbox grid (max 2 selections) */}
       <div className="form-control w-full">
         <label className="label">
           <span className="label-text font-semibold">Event Types</span>
@@ -300,11 +299,7 @@ export default function EventForm({
             return (
               <label
                 key={type}
-                className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                  isSelected
-                    ? "border-primary bg-primary/10"
-                    : "border-base-300 bg-gray-50 hover:border-primary/50"
-                } ${isDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                className={`type-tile ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
               >
                 <input
                   type="checkbox"
@@ -313,7 +308,7 @@ export default function EventForm({
                   disabled={isDisabled}
                   className="checkbox checkbox-primary checkbox-sm"
                 />
-                <span className={`text-sm ${isSelected ? "font-semibold text-primary" : ""}`}>
+                <span className={`text-sm ${isSelected ? 'font-semibold' : ''}`}>
                   {type}
                 </span>
               </label>
@@ -329,7 +324,6 @@ export default function EventForm({
         )}
       </div>
 
-      {/* Tickets Input Field */}
       <div className="form-control w-full">
         <label className="label">
           <span className="label-text font-semibold">Number of Tickets</span>
@@ -340,7 +334,7 @@ export default function EventForm({
           value={selectedTickets}
           onChange={(e) => setSelectedTickets(e.target.value)}
           placeholder="Enter number of tickets"
-          className="input input-bordered w-full bg-gray-50"
+          className="input input-bordered w-full themed-input"
         />
       </div>
 
@@ -353,7 +347,7 @@ export default function EventForm({
           type="color"
           value={color}
           onChange={(e) => setColor(e.target.value)}
-          className="input input-bordered w-full h-12 bg-gray-50"
+          className="input input-bordered w-full h-12 themed-input"
         />
       </div>
 
@@ -366,7 +360,7 @@ export default function EventForm({
           onChange={(e) =>
             setPriority(e.target.value as "available" | "almost-full" | "full")
           }
-          className="select select-bordered w-full bg-gray-50"
+          className="select select-bordered w-full themed-select"
         >
           <option value="available">Available</option>
           <option value="almost-full">Almost Full</option>

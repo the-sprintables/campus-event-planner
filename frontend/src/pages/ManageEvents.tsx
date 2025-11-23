@@ -17,8 +17,14 @@ export default function ManageEventsPage({
 }) {
   const [editing, setEditing] = useState<Event | null>(null);
   const [newPass, setNewPass] = useState("");
-  const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [eventMessage, setEventMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [passwordMessage, setPasswordMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+  const [eventMessage, setEventMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
   const user = currentUser();
 
   async function handleCreate(e: Event) {
@@ -28,10 +34,16 @@ export default function ManageEventsPage({
     if (result instanceof Promise) {
       const response = await result;
       if (response && response.success) {
-        setEventMessage({ type: "success", text: "Event created successfully!" });
+        setEventMessage({
+          type: "success",
+          text: "Event created successfully!",
+        });
         setTimeout(() => setEventMessage(null), 3000);
       } else {
-        setEventMessage({ type: "error", text: response?.error || "Failed to create event" });
+        setEventMessage({
+          type: "error",
+          text: response?.error || "Failed to create event",
+        });
         setTimeout(() => setEventMessage(null), 3000);
       }
     } else {
@@ -50,15 +62,24 @@ export default function ManageEventsPage({
       if (result instanceof Promise) {
         const response = await result;
         if (response && response.success) {
-          setEventMessage({ type: "success", text: "Event updated successfully!" });
+          setEventMessage({
+            type: "success",
+            text: "Event updated successfully!",
+          });
           setTimeout(() => setEventMessage(null), 3000);
         } else {
-          setEventMessage({ type: "error", text: response?.error || "Failed to update event" });
+          setEventMessage({
+            type: "error",
+            text: response?.error || "Failed to update event",
+          });
           setTimeout(() => setEventMessage(null), 3000);
         }
       } else {
         // If it's synchronous, show success optimistically
-        setEventMessage({ type: "success", text: "Event updated successfully!" });
+        setEventMessage({
+          type: "success",
+          text: "Event updated successfully!",
+        });
         setTimeout(() => setEventMessage(null), 3000);
       }
     }
@@ -68,36 +89,52 @@ export default function ManageEventsPage({
   async function handleChangePassword() {
     if (!user || !newPass) return;
     if (newPass.length < 6) {
-      setPasswordMessage({ type: "error", text: "Password must be at least 6 characters long" });
+      setPasswordMessage({
+        type: "error",
+        text: "Password must be at least 6 characters long",
+      });
       setTimeout(() => setPasswordMessage(null), 3000);
       return;
     }
     const res = await updatePassword(user.email, newPass);
     if (res.ok) {
       setNewPass("");
-      setPasswordMessage({ type: "success", text: "Password updated successfully" });
+      setPasswordMessage({
+        type: "success",
+        text: "Password updated successfully",
+      });
       setTimeout(() => setPasswordMessage(null), 3000);
     } else {
-      setPasswordMessage({ type: "error", text: res.error || "Failed to update password" });
+      setPasswordMessage({
+        type: "error",
+        text: res.error || "Failed to update password",
+      });
       setTimeout(() => setPasswordMessage(null), 3000);
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4">
+    <div className="min-h-screen py-8 px-4" style={{ backgroundColor: 'var(--bg)' }}>
       <div className="max-w-7xl mx-auto">
-        {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-black mb-2">Event Management</h1>
-          <p className="text-black">Create, edit, and manage your events</p>
+          <h1 className="text-4xl font-bold mb-2" style={{ color: 'var(--text)' }}>
+            Event Management
+          </h1>
+          <p className="text-lg" style={{ color: 'var(--muted)' }}>
+            Effortlessly create, edit, and manage your campus events.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column - Form Section */}
           <div className="space-y-6">
-            {/* Success/Error Message Alert */}
             {eventMessage && (
-              <div className={`alert ${eventMessage.type === "success" ? "alert-success" : "alert-error"} shadow-lg`}>
+              <div
+                className={`alert ${
+                  eventMessage.type === "success"
+                    ? "alert-success"
+                    : "alert-error"
+                } shadow-lg`}
+              >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   className="stroke-current shrink-0 h-6 w-6"
@@ -131,7 +168,9 @@ export default function ManageEventsPage({
                   <h2 className="card-title text-2xl">
                     {editing ? (
                       <>
-                        <span className="badge badge-warning mr-2">Editing</span>
+                        <span className="badge badge-warning mr-2">
+                          Editing
+                        </span>
                         Edit Event
                       </>
                     ) : (
@@ -163,9 +202,15 @@ export default function ManageEventsPage({
                     <div className="badge badge-primary badge-lg">Admin</div>
                     <h3 className="card-title text-xl">Admin Settings</h3>
                   </div>
-                  
+
                   {passwordMessage && (
-                    <div className={`alert ${passwordMessage.type === "success" ? "alert-success" : "alert-error"} mb-4`}>
+                    <div
+                      className={`alert ${
+                        passwordMessage.type === "success"
+                          ? "alert-success"
+                          : "alert-error"
+                      } mb-4`}
+                    >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         className="stroke-current shrink-0 h-6 w-6"
@@ -194,12 +239,14 @@ export default function ManageEventsPage({
 
                   <div className="form-control w-full">
                     <label className="label">
-                      <span className="label-text font-semibold">New Password</span>
+                      <span className="label-text font-semibold">
+                        New Password
+                      </span>
                     </label>
                     <input
                       type="password"
                       placeholder="Enter new password"
-                      className="input input-bordered w-full bg-gray-50"
+                      className="input input-bordered w-full themed-input"
                       value={newPass}
                       onChange={(e) => setNewPass(e.target.value)}
                     />
@@ -232,7 +279,8 @@ export default function ManageEventsPage({
                   <div>
                     <h2 className="card-title text-2xl">Your Events</h2>
                     <p className="text-base-content/70 mt-1">
-                      {initialEvents.length} {initialEvents.length === 1 ? "event" : "events"} total
+                      {initialEvents.length}{" "}
+                      {initialEvents.length === 1 ? "event" : "events"} total
                     </p>
                   </div>
                   {initialEvents.length > 0 && (

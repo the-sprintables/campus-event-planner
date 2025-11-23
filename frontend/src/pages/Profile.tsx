@@ -161,13 +161,13 @@ export default function Profile() {
         </h2>
 
         {error && (
-          <div className="error" style={{ marginBottom: '1rem', padding: '0.75rem', borderRadius: '8px', backgroundColor: '#fee2e2', color: '#b91c1c' }}>
+          <div className="error" style={{ marginBottom: '1rem', padding: '0.75rem', borderRadius: '8px', backgroundColor: 'var(--danger-bg)', color: 'var(--danger-text)' }}>
             {error}
           </div>
         )}
 
         {success && (
-          <div style={{ marginBottom: '1rem', padding: '0.75rem', borderRadius: '8px', backgroundColor: '#d1fae5', color: '#065f46' }}>
+          <div style={{ marginBottom: '1rem', padding: '0.75rem', borderRadius: '8px', backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}>
             {success}
           </div>
         )}
@@ -182,7 +182,7 @@ export default function Profile() {
               value={email}
               disabled
               className="auth-form input"
-              style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid #e6eef8', backgroundColor: '#f3f4f6', cursor: 'not-allowed', color: '#000000' }}
+              style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border)', backgroundColor: 'var(--input-bg)', cursor: 'not-allowed', color: 'var(--text)' }}
             />
             <small style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
               Email cannot be changed
@@ -211,35 +211,23 @@ export default function Profile() {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       padding: '12px 16px',
-                      border: isSelected ? '2px solid #2563eb' : '1px solid #e5e7eb',
+                      border: isSelected ? `2px solid var(--accent)` : `1px solid var(--border-muted)` ,
                       borderRadius: '8px',
-                      backgroundColor: isSelected ? 'rgba(37, 99, 235, 0.1)' : 'white',
+                      backgroundColor: isSelected ? 'var(--accent-glass)' : 'var(--card)',
                       cursor: 'pointer',
                       transition: 'all 0.2s',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isSelected) {
-                        e.currentTarget.style.backgroundColor = '#f9fafb';
-                        e.currentTarget.style.borderColor = '#d1d5db';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isSelected) {
-                        e.currentTarget.style.backgroundColor = 'white';
-                        e.currentTarget.style.borderColor = '#e5e7eb';
-                      }
                     }}
                   >
                     <span style={{ 
                       fontSize: '0.9rem',
                       fontWeight: isSelected ? '600' : '400',
-                      color: isSelected ? '#2563eb' : '#374151'
+                      color: isSelected ? 'var(--accent)' : 'var(--muted)'
                     }}>
                       {type}
                     </span>
                     {isSelected && (
                       <span style={{ 
-                        color: '#10b981',
+                        color: 'var(--success-text)',
                         fontSize: '1.2rem',
                         fontWeight: 'bold'
                       }}>
@@ -267,7 +255,6 @@ export default function Profile() {
           </div>
         </form>
 
-        {/* Password Reset Section */}
         <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid #e5e7eb' }}>
           <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--accent)' }}>
             Password Reset
@@ -305,7 +292,7 @@ export default function Profile() {
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Enter new password"
                   className="auth-form input"
-                  style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid #e6eef8', backgroundColor: 'white', color: '#0f172a' }}
+                  style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border)', backgroundColor: 'var(--input-bg)', color: 'var(--text)' }}
                 />
               </div>
 
@@ -319,7 +306,7 @@ export default function Profile() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm new password"
                   className="auth-form input"
-                  style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid #e6eef8', backgroundColor: 'white', color: '#0f172a' }}
+                  style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border)', backgroundColor: 'var(--input-bg)', color: 'var(--text)' }}
                 />
               </div>
 
