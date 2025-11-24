@@ -22,6 +22,24 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      const stored = localStorage.getItem('theme');
+      if (stored === 'light' || stored === 'dark') return stored;
+    } catch (e) {}
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  });
+
+  useEffect(() => {
+    try {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+    } catch (e) {}
+  }, [theme]);
+
   function handleLogout() {
     logout();
     navigate("/login");
@@ -133,6 +151,13 @@ export default function App() {
             <>
               <Link to="/profile">Profile</Link> |
               <span>Welcome, {user.email}</span>
+              <button
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                title="Toggle dark mode"
+                style={{ marginLeft: 8 }}
+              >
+                {theme === 'dark' ? '☀️' : '🌙'}
+              </button>
               <button onClick={handleLogout} style={{ marginLeft: 8 }}>
                 Logout
               </button>

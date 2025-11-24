@@ -35,11 +35,9 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
   const [userPreferredTypes, setUserPreferredTypes] = useState<string[]>([]) // User's preferred event types (multiple)
   const checkedEventIdsRef = useRef<Set<string>>(new Set())
   const lastCheckedEventIdsRef = useRef<string>('')
-  const profileLoadedRef = useRef<string | null>(null) // Track which user's profile we've loaded
-  
+  const profileLoadedRef = useRef<string | null>(null) 
   const user = currentUser()
   
-  // Predefined list of event types (same as in Feed.tsx and EventForm.tsx)
   const eventTypes = [
     "Sports & Fitness",
     "Music & Entertainment",
@@ -53,30 +51,24 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
     "Health & Wellness",
   ]
 
-  // Load user's preferred event types from backend on mount
   useEffect(() => {
     async function loadPreferredEventTypes() {
       const userEmail = user?.email
       
-      // Only load if we have a user email and haven't loaded it yet
       if (!userEmail || profileLoadedRef.current === userEmail) {
         return
       }
       
-      // Mark as loading to prevent duplicate calls
       profileLoadedRef.current = userEmail
       
-      // First try to load from backend
       const profileResult = await getUserProfile()
       if (profileResult.ok && profileResult.profile) {
-        // Get all preferred event types
         if (profileResult.profile.preferredEventTypes && profileResult.profile.preferredEventTypes.length > 0) {
           setUserPreferredTypes(profileResult.profile.preferredEventTypes)
           return
         }
       }
       
-      // Fallback to localStorage for backward compatibility
       const savedTypes = localStorage.getItem(`user_event_types_${userEmail}`)
       if (savedTypes) {
         try {
@@ -90,7 +82,6 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
         }
       }
       
-      // Also check single type format for backward compatibility
       const savedType = localStorage.getItem(`user_preferred_event_type_${userEmail}`)
       if (savedType) {
         setUserPreferredTypes([savedType])
@@ -98,38 +89,27 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
     }
     
     loadPreferredEventTypes()
-  }, [user?.email]) // Only depend on email, not the entire user object
+  }, [user?.email])
   
-  // Note: We don't need to update localEvents here anymore
-  // The filtering effect below handles updating localEvents based on viewMode and filters
   
-  // Check registration status for all events when they're loaded
-  // This effect only updates registration status, not the event list itself
   useEffect(() => {
     async function checkRegistrations() {
       if (!user || user.role === 'admin') {
-        // Admins don't need registration status, and unauthenticated users can't register
         return
       }
       
-      // Get current event IDs as a sorted string for comparison
       const currentEventIdsString = events.map(e => e.id).sort().join(',')
       
-      // Check if we've already checked these exact events
       if (currentEventIdsString === lastCheckedEventIdsRef.current && currentEventIdsString !== '') {
-        // Already checked these events, skip
         return
       }
       
-      // Only check events we haven't checked yet
       const eventsToCheck = events.filter(event => !checkedEventIdsRef.current.has(event.id))
       
       if (eventsToCheck.length === 0 && currentEventIdsString === lastCheckedEventIdsRef.current) {
-        // All events already checked and no new events
         return
       }
       
-      // Check registration status for new events in parallel
       const registrationChecks = eventsToCheck.map(async (event) => {
         const result = await checkEventRegistration(event.id)
         if (result.ok && result.data) {
@@ -140,20 +120,16 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
       
       const results = await Promise.all(registrationChecks)
       
-      // Mark these events as checked
       eventsToCheck.forEach(event => checkedEventIdsRef.current.add(event.id))
       
-      // Update the last checked event IDs string
       lastCheckedEventIdsRef.current = currentEventIdsString
       
-      // Update local events with registration status - preserve current filtered list
       setLocalEvents(prevEvents => 
         prevEvents.map(event => {
           const registrationResult = results.find(r => r.eventId === event.id)
           if (registrationResult) {
             return { ...event, isRegistered: registrationResult.isRegistered }
           }
-          // If event was already checked before, preserve its isRegistered status
           return event
         })
       )
@@ -164,50 +140,36 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
     }
   }, [events, user])
   
-  // Filter events based on view mode and selected event types
-  // This effect runs whenever viewMode, filters, or events change
   useEffect(() => {
-    let filteredEvents = [...events] // Start with a copy of all events
+    let filteredEvents = [...events] 
     
-    // If viewMode is 'all', show all events (but can still be filtered by dropdown)
     if (viewMode === 'all') {
       filteredEvents = [...events]
     }
-    // If viewMode is 'suggested', filter by user's preferred event types
     else if (viewMode === 'suggested') {
       if (userPreferredTypes.length > 0) {
-        // Filter by user's preferred event types - show events that match any of the preferred types
         filteredEvents = events.filter(event => {
           if (!event.eventType) return false;
-          // Handle both string and array formats
           const eventTypes = Array.isArray(event.eventType) ? event.eventType : [event.eventType];
-          // Check if any of the event's types match any of the user's preferred types
           return eventTypes.some(type => userPreferredTypes.includes(type));
         })
       } else {
-        // No user preferences, show no events in suggested mode
         filteredEvents = []
       }
     }
     
-    // Apply filter dropdown selections if any (works for both 'suggested' and 'all' modes)
     const selectedTypes = Object.keys(selectedEventTypes).filter(type => selectedEventTypes[type])
     if (selectedTypes.length > 0) {
-      // Further filter by selected types in the filter dropdown
       filteredEvents = filteredEvents.filter(event => {
         if (!event.eventType) return false;
-        // Handle both string and array formats
         const eventTypes = Array.isArray(event.eventType) ? event.eventType : [event.eventType];
         return eventTypes.some(type => selectedTypes.includes(type));
       })
     }
     
-    // Update local events with filtered list, preserving registration status from previous state
     setLocalEvents(prevEvents => {
-      // Create a map of previous events by ID to preserve registration status
       const prevEventsMap = new Map(prevEvents.map(e => [e.id, e]))
       
-      // Map filtered events, preserving registration status if available
       return filteredEvents.map(event => {
         const prevEvent = prevEventsMap.get(event.id)
         if (prevEvent && prevEvent.isRegistered !== undefined) {
@@ -218,7 +180,6 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
     })
   }, [viewMode, userPreferredTypes, selectedEventTypes, events])
   
-  // Close filter dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement
@@ -248,14 +209,12 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
   
   const handleViewAllEvents = () => {
     if (viewMode !== 'all') {
-      // Clear all filters when viewing all events
       setSelectedEventTypes({})
       setViewMode('all')
     }
   }
 
   const handleRegistrationChange = (eventId: string, isRegistered: boolean) => {
-    // Update the selected event's registration status
     if (selected && selected.id === eventId) {
       const updatedEvent = { 
         ...selected, 
@@ -266,15 +225,12 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
       }
       setSelected(updatedEvent)
       
-      // Also update local events list
       setLocalEvents(prevEvents => 
         prevEvents.map(event => 
           event.id === eventId ? updatedEvent : event
         )
       )
       
-      // Note: We don't call onEventUpdate here because that's for updating event details,
-      // not for managing registrations. Registration changes are handled via the API directly.
     }
   }
 
@@ -284,36 +240,25 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
   }
 
   const handleBookingSuccess = (eventId: string, quantity: number) => {
-    // Update the local events state
     setLocalEvents(prevEvents => 
       prevEvents.map(event => 
         event.id === eventId 
           ? {
               ...event,
               isRegistered: true,
-              registrationCount: (event.registrationCount || 0) + quantity,
-              // Decrement capacity/ticketsAvailable by the quantity booked
-              capacity: event.capacity !== undefined ? Math.max(0, event.capacity - quantity) : event.capacity,
-              ticketsAvailable: Math.max(0, (event.ticketsAvailable || 0) - quantity)
+              registrationCount: (event.registrationCount || 0) + quantity
             }
           : event
       )
     )
     
-    // Update selected event if it's the one being booked
     if (selected && selected.id === eventId) {
       setSelected({
         ...selected,
         isRegistered: true,
-        registrationCount: (selected.registrationCount || 0) + quantity,
-        // Decrement capacity/ticketsAvailable by the quantity booked
-        capacity: selected.capacity !== undefined ? Math.max(0, selected.capacity - quantity) : selected.capacity,
-        ticketsAvailable: Math.max(0, (selected.ticketsAvailable || 0) - quantity)
-      })
+        registrationCount: (selected.registrationCount || 0) + quantity      })
     }
     
-    // Note: We don't call onEventUpdate here because that's for updating event details,
-    // not for managing registrations. Registration changes are handled via the API directly.
   }
 
   const handleCancelBookingClick = (eventId: string) => {
@@ -325,14 +270,11 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
     if (!eventToCancel) return
     
     try {
-      // Call API to cancel registration
       const result = await unregisterFromEvent(eventToCancel)
       
       if (result.ok) {
-        // Get the quantity that was canceled (default to 1 if not provided)
         const quantity = result.data?.quantity || 1
         
-        // Update the local events state
         setLocalEvents(prevEvents => 
           prevEvents.map(event => 
             event.id === eventToCancel 
@@ -340,34 +282,23 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
                   ...event,
                   isRegistered: false,
                   registrationCount: Math.max(0, (event.registrationCount || quantity) - quantity),
-                  // Increment capacity/ticketsAvailable by the quantity canceled
-                  capacity: event.capacity !== undefined ? (event.capacity + quantity) : event.capacity,
-                  ticketsAvailable: (event.ticketsAvailable || 0) + quantity
                 }
               : event
           )
         )
         
-        // Update selected event if it's the one being canceled
         if (selected && selected.id === eventToCancel) {
           setSelected({
             ...selected,
             isRegistered: false,
             registrationCount: Math.max(0, (selected.registrationCount || quantity) - quantity),
-            // Increment capacity/ticketsAvailable by the quantity canceled
-            capacity: selected.capacity !== undefined ? (selected.capacity + quantity) : selected.capacity,
-            ticketsAvailable: (selected.ticketsAvailable || 0) + quantity
           })
         }
         
-        // Note: We don't call onEventUpdate here because that's for updating event details,
-        // not for managing registrations. Registration changes are handled via the API directly.
         
-        // Close confirmation dialog
         setCancelConfirmOpen(false)
         setEventToCancel(null)
       } else {
-        // Show error (you might want to add error state handling here)
         console.error('Failed to cancel booking:', result.error)
         alert(result.error || 'Failed to cancel booking')
       }
@@ -387,7 +318,6 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
     setBookingEvent(null)
   }
   
-  // Handle null or undefined events
   if (!localEvents || !Array.isArray(localEvents)) {
     return <div className="events-page">No events available.</div>
   }
@@ -395,17 +325,15 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
   return (
     <div className="events-page mb-20">
       <section className="left px-8 my-8">
-        {/* View mode buttons and filter button */}
         <div data-filter-container style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', position: 'relative' }}>
-          {/* Left side: View mode buttons */}
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <button
               className="btn"
               onClick={handleSuggestedEvents}
               style={{
-                backgroundColor: viewMode === 'suggested' ? '#2563eb' : 'transparent',
-                color: viewMode === 'suggested' ? 'white' : '#2563eb',
-                border: '2px solid #2563eb',
+                backgroundColor: viewMode === 'suggested' ? 'var(--accent)' : 'transparent',
+                color: viewMode === 'suggested' ? 'white' : 'var(--accent)',
+                border: '2px solid var(--accent)',
                 fontWeight: '600',
                 padding: '8px 16px',
                 borderRadius: '8px',
@@ -434,9 +362,9 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
               className="btn"
               onClick={handleViewAllEvents}
               style={{
-                backgroundColor: viewMode === 'all' ? '#2563eb' : 'transparent',
-                color: viewMode === 'all' ? 'white' : '#2563eb',
-                border: '2px solid #2563eb',
+                backgroundColor: viewMode === 'all' ? 'var(--accent)' : 'transparent',
+                color: viewMode === 'all' ? 'white' : 'var(--accent)',
+                border: '2px solid var(--accent)',
                 fontWeight: '600',
                 padding: '8px 16px',
                 borderRadius: '8px',
@@ -463,7 +391,6 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
             </button>
           </div>
           
-          {/* Right side: Filter button */}
           <button
             className="btn ghost"
             onClick={() => setShowFilter(!showFilter)}
@@ -478,11 +405,11 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
               top: '100%',
               right: 0,
               marginTop: '8px',
-              background: 'white',
-              border: '1px solid rgba(15,23,42,0.1)',
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
               borderRadius: '8px',
               padding: '16px',
-              boxShadow: '0 8px 30px rgba(15,23,42,0.1)',
+              boxShadow: '0 8px 30px rgba(2,6,23,0.12)',
               zIndex: 100,
               minWidth: '200px'
             }}>
@@ -522,7 +449,6 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
                   className="btn ghost"
                   onClick={() => {
                     setSelectedEventTypes({})
-                    // If in suggested mode, stay in suggested mode but clear the additional filters
                   }}
                   style={{ marginTop: '12px', width: '100%', fontSize: '0.9em' }}
                 >
@@ -539,7 +465,6 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
           ) : (
             localEvents.map(ev => (
             <div key={ev.id} className="event-card card">
-              {/* media: use image if available via background-image, else gradient based on color */}
               <div
                 className="media"
                 style={ev.imageData && ev.imageData.trim() !== ''
@@ -562,7 +487,6 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
               )}
               <div className="title">{ev.title}</div>
               <div className="meta">{ev.date}{ev.location ? ` • ${ev.location}` : ''}</div>
-              {/* Event types */}
               {ev.eventType && (
                 <div style={{ 
                   marginTop: '8px', 
@@ -614,7 +538,6 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
         </div>
       </section>
 
-      {/* Modal popup for selected event */}
       {selected && (
         <div className="modal-backdrop" onClick={() => setSelected(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -630,7 +553,6 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
         </div>
       )}
 
-      {/* Booking Modal */}
       <BookingModal
         event={bookingEvent}
         isOpen={isBookingModalOpen}
@@ -638,7 +560,6 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
         onBookingSuccess={handleBookingSuccess}
       />
 
-      {/* Cancel Booking Confirmation Dialog */}
       <ConfirmDialog
         open={cancelConfirmOpen}
         title="Cancel Booking"
