@@ -1,4 +1,11 @@
 {
+  "name": "campus-event-planner",
+  "version": "1.0.0",
+  "scripts": {
+    "test:e2e": "./scripts/run-e2e-tests.sh",
+    "test:e2e:backend": "./scripts/run-e2e-tests.sh --backend-only",
+    "test:e2e:frontend": "./scripts/run-e2e-tests.sh --frontend-only"
+  },
   "dependencies": {
     "react-icons": "^5.5.0"
   }

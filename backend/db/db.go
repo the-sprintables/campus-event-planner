@@ -77,6 +77,7 @@ func createTables() {
 
 	migrateEventsTable()
 	migrateUsersTable()
+	migrateRegistrationsTable()
 
 	createDefaultAdmin()
 }
@@ -119,4 +120,13 @@ func migrateEventsTable() {
 func migrateUsersTable() {
 	_, _ = DB.Exec("ALTER TABLE users ADD COLUMN name TEXT")
 	_, _ = DB.Exec("ALTER TABLE users ADD COLUMN preferred_event_types TEXT")
+}
+
+func migrateRegistrationsTable() {
+	// Add quantity column if it doesn't exist
+	// SQLite doesn't support IF NOT EXISTS for ALTER TABLE, so we ignore errors
+	// The error will be ignored if column already exists
+	_, _ = DB.Exec("ALTER TABLE registrations ADD COLUMN quantity INTEGER DEFAULT 1")
+	// Update any NULL quantities to 1 (for existing records)
+	_, _ = DB.Exec("UPDATE registrations SET quantity = 1 WHERE quantity IS NULL")
 }

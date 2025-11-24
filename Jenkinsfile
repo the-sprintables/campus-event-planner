@@ -3,10 +3,10 @@ pipeline {
 
     environment {
         // Docker
-        DOCKER_REGISTRY = 'docker.io'
-        DOCKER_IMAGE_PREFIX = ''
+        DOCKER_REGISTRY = 'docker.io'  // docker.io is Docker Hub
+        DOCKER_IMAGE_PREFIX = 'a00336001'  // MUST be your Docker Hub username or organization name
         LATEST_TAG = 'latest'
-        DOCKER_CREDENTIALS_ID = '' // Optional: set Jenkins credential ID for docker registry (username/password)
+        DOCKER_CREDENTIALS_ID = 'docker-hub-credentials'  // Set to Jenkins credential ID for Docker Hub (username/password or access token)
 
         // Git
         GIT_REPO_URL = 'https://github.com/the-sprintables/campus-event-planner.git'
@@ -55,7 +55,12 @@ pipeline {
                         if (reg) env.DOCKER_REGISTRY = reg
                     } catch (_) {}
 
-                    env.DOCKER_IMAGE_PREFIX = env.DOCKER_REGISTRY.contains('docker.io') ? 'your-username' : ''
+                    // For Docker Hub, DOCKER_IMAGE_PREFIX MUST be your Docker Hub username or organization name
+                    // Docker Hub format: username/repository-name:tag
+                    // Example: if username is 'johndoe', images will be 'johndoe/campus-event-planner-frontend:tag'
+                    if (!env.DOCKER_IMAGE_PREFIX && env.DOCKER_REGISTRY.contains('docker.io')) {
+                        env.DOCKER_IMAGE_PREFIX = 'a00336001'  // Docker Hub username
+                    }
                     def prefix = env.DOCKER_IMAGE_PREFIX ? "${env.DOCKER_IMAGE_PREFIX}/" : ""
                     def buildNum = env.BUILD_NUMBER ?: 'local'
 
@@ -133,6 +138,57 @@ pipeline {
             }
         }
 
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    // Set up Java (required for SonarQube scanner)
+                    def javaPath = findTool('java', ['/usr/bin/java', '/usr/local/bin/java', '/opt/homebrew/bin/java'])
+                    if (!javaPath) {
+                        echo "Java not found. Attempting to install..."
+                        brewPath = findTool('brew', ['/usr/local/bin/brew', '/opt/homebrew/bin/brew'])
+                        if (brewPath) {
+                            sh "${brewPath} install openjdk@17 || true"
+                            javaPath = findTool('java', ['/usr/bin/java', '/usr/local/bin/java', '/opt/homebrew/bin/java', '/opt/homebrew/opt/openjdk@17/bin/java'])
+                        }
+                    }
+                    if (javaPath) {
+                        env.PATH = "${javaPath.replaceFirst('/java$','')}:${env.PATH}"
+                        showVersion("Java", "java -version")
+                    } else {
+                        echo "Warning: Java not found. SonarQube scan may fail."
+                    }
+
+                    // Generate Go test coverage for SonarQube
+                    dir('backend') {
+                        sh 'go mod download'
+                        sh 'go test ./routes/... -coverprofile=coverage.out -coverpkg=./routes,./models,./db,./utils,./middlewares -covermode=atomic || true'
+                    }
+
+                    // Run SonarQube scan
+                    // Note: Requires sonar-scanner CLI to be installed or SONAR_TOKEN environment variable
+                    def sonarScanner = findTool('sonar-scanner', ['/usr/local/bin/sonar-scanner', '/opt/homebrew/bin/sonar-scanner'])
+                    if (!sonarScanner) {
+                        // Try to use sonar-scanner from PATH
+                        sonarScanner = sh(script: 'command -v sonar-scanner || echo ""', returnStdout: true).trim()
+                    }
+                    
+                    if (sonarScanner) {
+                        echo "Running SonarQube scan with sonar-scanner..."
+                        // Use sonar-project.properties if available, otherwise pass parameters directly
+                        if (fileExists('sonar-project.properties')) {
+                            sh "${sonarScanner}"
+                        } else {
+                            sh "${sonarScanner} -Dsonar.projectKey=the-sprintables_campus-event-planner -Dsonar.organization=the-sprintables"
+                        }
+                    } else {
+                        echo "Warning: sonar-scanner CLI not found. SonarQube scan skipped."
+                        echo "To enable SonarQube analysis, please install sonar-scanner or configure it in Jenkins."
+                        echo "Installation: https://docs.sonarqube.org/latest/analyzing-source-code/scanners/sonarscanner/"
+                    }
+                }
+            }
+        }
+
         stage('Build and Test') {
             parallel {
                 stage('Frontend') {
@@ -184,6 +240,18 @@ pipeline {
             }
         }
 
+        stage('E2E Tests') {
+            steps {
+                script {
+                    // Make sure the script is executable
+                    sh 'chmod +x scripts/run-e2e-tests.sh || true'
+                    
+                    // Run E2E tests
+                    sh './scripts/run-e2e-tests.sh'
+                }
+            }
+        }
+
         stage('Build Docker Images') {
             steps {
                 script {
@@ -220,22 +288,71 @@ pipeline {
                     def frontendBase = env.FRONTEND_IMAGE.split(':')[0]
                     def backendBase = env.BACKEND_IMAGE.split(':')[0]
 
+                    echo "Preparing to push images:"
+                    echo "  Frontend: ${env.FRONTEND_IMAGE} and ${frontendBase}:${env.LATEST_TAG}"
+                    echo "  Backend: ${env.BACKEND_IMAGE} and ${backendBase}:${env.LATEST_TAG}"
+
+                    // Docker login
                     if (env.DOCKER_CREDENTIALS_ID) {
-                        withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                            echo "Logging into ${env.DOCKER_REGISTRY} as ${DOCKER_USER}"
-                            sh "echo \$DOCKER_PASS | docker login ${env.DOCKER_REGISTRY} -u \$DOCKER_USER --password-stdin"
+                        try {
+                            withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                                echo "Logging into ${env.DOCKER_REGISTRY} as ${DOCKER_USER}"
+                                def loginResult = sh(
+                                    script: "echo \$DOCKER_PASS | docker login ${env.DOCKER_REGISTRY} -u \$DOCKER_USER --password-stdin",
+                                    returnStatus: true
+                                )
+                                if (loginResult != 0) {
+                                    error("Docker login failed. Please check your credentials (ID: ${env.DOCKER_CREDENTIALS_ID})")
+                                }
+                                echo "Docker login successful"
+                            }
+                        } catch (Exception e) {
+                            error("Failed to authenticate with Docker Hub: ${e.message}. Check that credential ID '${env.DOCKER_CREDENTIALS_ID}' exists in Jenkins.")
                         }
                     } else {
-                        echo "No Docker credentials provided; attempting anonymous push (may fail)."
+                        echo "Warning: No Docker credentials provided (DOCKER_CREDENTIALS_ID is empty). Attempting anonymous push (will likely fail)."
                     }
 
-                    // push with tolerance for failures (so logs show any errors but pipeline continues to record them)
-                    sh """
-                        docker push ${env.FRONTEND_IMAGE} || echo "Failed pushing ${env.FRONTEND_IMAGE}"
-                        docker push ${frontendBase}:${env.LATEST_TAG} || echo "Failed pushing ${frontendBase}:${env.LATEST_TAG}"
-                        docker push ${env.BACKEND_IMAGE} || echo "Failed pushing ${env.BACKEND_IMAGE}"
-                        docker push ${backendBase}:${env.LATEST_TAG} || echo "Failed pushing ${backendBase}:${env.LATEST_TAG}"
-                    """
+                    // Push images - fail if any push fails
+                    echo "Pushing Docker images..."
+                    def pushFailed = false
+                    def errors = []
+
+                    // Push frontend images
+                    echo "Pushing ${env.FRONTEND_IMAGE}..."
+                    def result1 = sh(script: "docker push ${env.FRONTEND_IMAGE}", returnStatus: true)
+                    if (result1 != 0) {
+                        pushFailed = true
+                        errors.add("Failed to push ${env.FRONTEND_IMAGE}")
+                    }
+
+                    echo "Pushing ${frontendBase}:${env.LATEST_TAG}..."
+                    def result2 = sh(script: "docker push ${frontendBase}:${env.LATEST_TAG}", returnStatus: true)
+                    if (result2 != 0) {
+                        pushFailed = true
+                        errors.add("Failed to push ${frontendBase}:${env.LATEST_TAG}")
+                    }
+
+                    // Push backend images
+                    echo "Pushing ${env.BACKEND_IMAGE}..."
+                    def result3 = sh(script: "docker push ${env.BACKEND_IMAGE}", returnStatus: true)
+                    if (result3 != 0) {
+                        pushFailed = true
+                        errors.add("Failed to push ${env.BACKEND_IMAGE}")
+                    }
+
+                    echo "Pushing ${backendBase}:${env.LATEST_TAG}..."
+                    def result4 = sh(script: "docker push ${backendBase}:${env.LATEST_TAG}", returnStatus: true)
+                    if (result4 != 0) {
+                        pushFailed = true
+                        errors.add("Failed to push ${backendBase}:${env.LATEST_TAG}")
+                    }
+
+                    if (pushFailed) {
+                        error("Docker push failed:\n${errors.join('\n')}\n\nCheck:\n1. Docker Hub credentials are correct\n2. You have permission to push to ${env.DOCKER_IMAGE_PREFIX}\n3. Images were built successfully\n4. Network connectivity to Docker Hub")
+                    } else {
+                        echo "All images pushed successfully to Docker Hub!"
+                    }
                 }
             }
         }
