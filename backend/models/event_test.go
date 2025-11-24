@@ -363,7 +363,7 @@ func TestEvent_Register(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Register user2 for event
-	err = event.Register(user2.ID)
+	err = event.Register(user2.ID, 1)
 	assert.NoError(t, err)
 
 	// Verify registration
@@ -406,11 +406,11 @@ func TestEvent_CancelRegistration(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Register user2 for event
-	err = event.Register(user2.ID)
+	err = event.Register(user2.ID, 1)
 	assert.NoError(t, err)
 
 	// Cancel registration
-	err = event.CancelRegistration(user2.ID)
+	_, err = event.CancelRegistration(user2.ID)
 	assert.NoError(t, err)
 
 	// Verify registration is cancelled

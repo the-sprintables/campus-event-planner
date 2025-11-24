@@ -9,6 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type registerRequest struct {
+	Quantity int64 `json:"quantity"`
+}
+
 func registerForEvent(context *gin.Context) {
 	userId := context.GetInt64("userId")
 	eventId, err := strconv.ParseInt(context.Param("id"), 10, 64)
@@ -18,6 +22,17 @@ func registerForEvent(context *gin.Context) {
 		return
 	}
 
+	// Parse request body for quantity (default to 1 if not provided)
+	var req registerRequest
+	if err := context.ShouldBindJSON(&req); err != nil {
+		// If no JSON body, default to quantity 1 for backward compatibility
+		req.Quantity = 1
+	}
+
+	if req.Quantity <= 0 {
+		req.Quantity = 1
+	}
+
 	event, err := models.GetEventByID(eventId)
 
 	if err != nil {
@@ -25,18 +40,25 @@ func registerForEvent(context *gin.Context) {
 		return
 	}
 
-	err = event.Register(userId)
+	err = event.Register(userId, req.Quantity)
 
 	if err != nil {
 		if strings.Contains(err.Error(), "already registered") {
 			context.JSON(http.StatusConflict, gin.H{"message": "User already registered for this event"})
 			return
 		}
+		if strings.Contains(err.Error(), "Not enough tickets") {
+			context.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+			return
+		}
 		context.JSON(http.StatusInternalServerError, gin.H{"message": "Could not register for event"})
 		return
 	}
 
-	context.JSON(http.StatusCreated, gin.H{"message": "Registered for event successfully"})
+	context.JSON(http.StatusCreated, gin.H{
+		"message":  "Registered for event successfully",
+		"quantity": req.Quantity,
+	})
 }
 
 func cancelRegistration(context *gin.Context) {
@@ -55,7 +77,8 @@ func cancelRegistration(context *gin.Context) {
 		return
 	}
 
-	err = event.CancelRegistration(userId)
+	// Cancel registration and get the quantity that was canceled
+	quantity, err := event.CancelRegistration(userId)
 
 	if err != nil {
 		if strings.Contains(err.Error(), "already been cancelled") {
@@ -66,7 +89,10 @@ func cancelRegistration(context *gin.Context) {
 		return
 	}
 
-	context.JSON(http.StatusOK, gin.H{"message": "Cancelled successfully"})
+	context.JSON(http.StatusOK, gin.H{
+		"message":  "Cancelled successfully",
+		"quantity": quantity,
+	})
 }
 
 func getRegistrationStatus(context *gin.Context) {

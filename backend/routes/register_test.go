@@ -471,7 +471,7 @@ func TestCancelRegistration_Valid(t *testing.T) {
 	}
 
 	// Register for the event first
-	err = event.Register(user.ID)
+	err = event.Register(user.ID, 1)
 	if err != nil {
 		t.Fatalf("Failed to register for event: %v", err)
 	}

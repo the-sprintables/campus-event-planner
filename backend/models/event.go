@@ -193,13 +193,24 @@ func (event Event) Delete() error {
 	return err
 }
 
-func (e Event) Register(userID int64) error {
+func (e Event) Register(userID int64, quantity int64) error {
+	if quantity <= 0 {
+		return errors.New("quantity must be greater than 0")
+	}
+
+	// Start a transaction to ensure both operations succeed or fail together
+	tx, err := db.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Check if user is already registered
 	checkQuery := `
 	SELECT COUNT(*) FROM registrations
 	WHERE event_id = ? AND user_id = ?`
-
 	var count int
-	err := db.DB.QueryRow(checkQuery, e.ID, userID).Scan(&count)
+	err = tx.QueryRow(checkQuery, e.ID, userID).Scan(&count)
 	if err != nil {
 		return err
 	}
@@ -208,50 +219,114 @@ func (e Event) Register(userID int64) error {
 		return errors.New("User already registered for this event")
 	}
 
-	query := `
-	INSERT INTO registrations (event_id, user_id)
-	VALUES (?, ?)`
-	stmt, err := db.DB.Prepare(query)
+	// Check if tickets are available and decrement atomically by quantity
+	updateQuery := `
+	UPDATE events
+	SET ticketsAvailable = ticketsAvailable - ?
+	WHERE id = ? AND ticketsAvailable >= ?`
+	updateStmt, err := tx.Prepare(updateQuery)
+	if err != nil {
+		return err
+	}
+	defer updateStmt.Close()
 
+	result, err := updateStmt.Exec(quantity, e.ID, quantity)
 	if err != nil {
 		return err
 	}
 
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return errors.New("Not enough tickets available for this event")
+	}
+
+	// Insert registration with quantity
+	insertQuery := `
+	INSERT INTO registrations (event_id, user_id, quantity)
+	VALUES (?, ?, ?)`
+	stmt, err := tx.Prepare(insertQuery)
+	if err != nil {
+		return err
+	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(e.ID, userID)
-	return err
+	_, err = stmt.Exec(e.ID, userID, quantity)
+	if err != nil {
+		return err
+	}
+
+	// Commit the transaction
+	return tx.Commit()
 }
 
-func (e Event) CancelRegistration(userID int64) error {
-	checkQuery := `
-	SELECT COUNT(*) FROM registrations
-	WHERE event_id = ? AND user_id = ?`
-
-	var count int
-	err := db.DB.QueryRow(checkQuery, e.ID, userID).Scan(&count)
+func (e Event) CancelRegistration(userID int64) (int64, error) {
+	// Start a transaction to ensure both operations succeed or fail together
+	tx, err := db.DB.Begin()
 	if err != nil {
-		return err
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	// Get the quantity from the registration before deleting it
+	getQuantityQuery := `
+	SELECT quantity FROM registrations
+	WHERE event_id = ? AND user_id = ?`
+	var quantity int64
+	err = tx.QueryRow(getQuantityQuery, e.ID, userID).Scan(&quantity)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, errors.New("Event does not exist or has already been cancelled")
+		}
+		return 0, err
 	}
 
-	if count == 0 {
-		return errors.New("Event does not exist or has already been cancelled")
+	// Default to 1 if quantity is 0 or not set (for backward compatibility with old records)
+	if quantity <= 0 {
+		quantity = 1
 	}
 
-	query := `
+	// Delete registration
+	deleteQuery := `
 	DELETE FROM registrations
 	WHERE event_id = ? AND user_id = ?`
-
-	stmt, err := db.DB.Prepare(query)
-
+	stmt, err := tx.Prepare(deleteQuery)
 	if err != nil {
-		return err
+		return 0, err
 	}
-
 	defer stmt.Close()
 
 	_, err = stmt.Exec(e.ID, userID)
-	return err
+	if err != nil {
+		return 0, err
+	}
+
+	// Increment ticketsAvailable by the stored quantity
+	updateQuery := `
+	UPDATE events
+	SET ticketsAvailable = ticketsAvailable + ?
+	WHERE id = ?`
+	updateStmt, err := tx.Prepare(updateQuery)
+	if err != nil {
+		return 0, err
+	}
+	defer updateStmt.Close()
+
+	_, err = updateStmt.Exec(quantity, e.ID)
+	if err != nil {
+		return 0, err
+	}
+
+	// Commit the transaction
+	err = tx.Commit()
+	if err != nil {
+		return 0, err
+	}
+
+	return quantity, nil
 }
 
 func IsUserRegisteredForEvent(eventID int64, userID int64) (bool, error) {
@@ -266,4 +341,26 @@ func IsUserRegisteredForEvent(eventID int64, userID int64) (bool, error) {
 	}
 
 	return count > 0, nil
+}
+
+func GetRegistrationQuantity(eventID int64, userID int64) (int64, error) {
+	query := `
+	SELECT quantity FROM registrations
+	WHERE event_id = ? AND user_id = ?`
+
+	var quantity int64
+	err := db.DB.QueryRow(query, eventID, userID).Scan(&quantity)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, errors.New("Registration not found")
+		}
+		return 0, err
+	}
+
+	// Default to 1 if quantity is 0 or not set (for backward compatibility)
+	if quantity <= 0 {
+		quantity = 1
+	}
+
+	return quantity, nil
 }

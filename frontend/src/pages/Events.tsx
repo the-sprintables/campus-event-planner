@@ -35,6 +35,7 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
   const [userPreferredTypes, setUserPreferredTypes] = useState<string[]>([]) // User's preferred event types (multiple)
   const checkedEventIdsRef = useRef<Set<string>>(new Set())
   const lastCheckedEventIdsRef = useRef<string>('')
+  const profileLoadedRef = useRef<string | null>(null) // Track which user's profile we've loaded
   
   const user = currentUser()
   
@@ -55,41 +56,49 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
   // Load user's preferred event types from backend on mount
   useEffect(() => {
     async function loadPreferredEventTypes() {
-      if (user?.email) {
-        // First try to load from backend
-        const profileResult = await getUserProfile()
-        if (profileResult.ok && profileResult.profile) {
-          // Get all preferred event types
-          if (profileResult.profile.preferredEventTypes && profileResult.profile.preferredEventTypes.length > 0) {
-            setUserPreferredTypes(profileResult.profile.preferredEventTypes)
+      const userEmail = user?.email
+      
+      // Only load if we have a user email and haven't loaded it yet
+      if (!userEmail || profileLoadedRef.current === userEmail) {
+        return
+      }
+      
+      // Mark as loading to prevent duplicate calls
+      profileLoadedRef.current = userEmail
+      
+      // First try to load from backend
+      const profileResult = await getUserProfile()
+      if (profileResult.ok && profileResult.profile) {
+        // Get all preferred event types
+        if (profileResult.profile.preferredEventTypes && profileResult.profile.preferredEventTypes.length > 0) {
+          setUserPreferredTypes(profileResult.profile.preferredEventTypes)
+          return
+        }
+      }
+      
+      // Fallback to localStorage for backward compatibility
+      const savedTypes = localStorage.getItem(`user_event_types_${userEmail}`)
+      if (savedTypes) {
+        try {
+          const typesArray = JSON.parse(savedTypes) as string[]
+          if (typesArray.length > 0) {
+            setUserPreferredTypes(typesArray)
             return
           }
+        } catch (error) {
+          console.error('Error parsing saved event types:', error)
         }
-        
-        // Fallback to localStorage for backward compatibility
-        const savedTypes = localStorage.getItem(`user_event_types_${user.email}`)
-        if (savedTypes) {
-          try {
-            const typesArray = JSON.parse(savedTypes) as string[]
-            if (typesArray.length > 0) {
-              setUserPreferredTypes(typesArray)
-              return
-            }
-          } catch (error) {
-            console.error('Error parsing saved event types:', error)
-          }
-        }
-        
-        // Also check single type format for backward compatibility
-        const savedType = localStorage.getItem(`user_preferred_event_type_${user.email}`)
-        if (savedType) {
-          setUserPreferredTypes([savedType])
-        }
+      }
+      
+      // Also check single type format for backward compatibility
+      const savedType = localStorage.getItem(`user_preferred_event_type_${userEmail}`)
+      if (savedType) {
+        setUserPreferredTypes([savedType])
       }
     }
     
     loadPreferredEventTypes()
-  }, [user])
+  }, [user?.email]) // Only depend on email, not the entire user object
   
   // Note: We don't need to update localEvents here anymore
   // The filtering effect below handles updating localEvents based on viewMode and filters
@@ -274,7 +283,7 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
     setIsBookingModalOpen(true)
   }
 
-  const handleBookingSuccess = (eventId: string) => {
+  const handleBookingSuccess = (eventId: string, quantity: number) => {
     // Update the local events state
     setLocalEvents(prevEvents => 
       prevEvents.map(event => 
@@ -282,7 +291,10 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
           ? {
               ...event,
               isRegistered: true,
-              registrationCount: (event.registrationCount || 0) + 1
+              registrationCount: (event.registrationCount || 0) + quantity,
+              // Decrement capacity/ticketsAvailable by the quantity booked
+              capacity: event.capacity !== undefined ? Math.max(0, event.capacity - quantity) : event.capacity,
+              ticketsAvailable: Math.max(0, (event.ticketsAvailable || 0) - quantity)
             }
           : event
       )
@@ -293,7 +305,10 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
       setSelected({
         ...selected,
         isRegistered: true,
-        registrationCount: (selected.registrationCount || 0) + 1
+        registrationCount: (selected.registrationCount || 0) + quantity,
+        // Decrement capacity/ticketsAvailable by the quantity booked
+        capacity: selected.capacity !== undefined ? Math.max(0, selected.capacity - quantity) : selected.capacity,
+        ticketsAvailable: Math.max(0, (selected.ticketsAvailable || 0) - quantity)
       })
     }
     
@@ -314,6 +329,9 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
       const result = await unregisterFromEvent(eventToCancel)
       
       if (result.ok) {
+        // Get the quantity that was canceled (default to 1 if not provided)
+        const quantity = result.data?.quantity || 1
+        
         // Update the local events state
         setLocalEvents(prevEvents => 
           prevEvents.map(event => 
@@ -321,7 +339,10 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
               ? {
                   ...event,
                   isRegistered: false,
-                  registrationCount: Math.max(0, (event.registrationCount || 1) - 1)
+                  registrationCount: Math.max(0, (event.registrationCount || quantity) - quantity),
+                  // Increment capacity/ticketsAvailable by the quantity canceled
+                  capacity: event.capacity !== undefined ? (event.capacity + quantity) : event.capacity,
+                  ticketsAvailable: (event.ticketsAvailable || 0) + quantity
                 }
               : event
           )
@@ -332,7 +353,10 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
           setSelected({
             ...selected,
             isRegistered: false,
-            registrationCount: Math.max(0, (selected.registrationCount || 1) - 1)
+            registrationCount: Math.max(0, (selected.registrationCount || quantity) - quantity),
+            // Increment capacity/ticketsAvailable by the quantity canceled
+            capacity: selected.capacity !== undefined ? (selected.capacity + quantity) : selected.capacity,
+            ticketsAvailable: (selected.ticketsAvailable || 0) + quantity
           })
         }
         

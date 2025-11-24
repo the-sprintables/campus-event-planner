@@ -572,11 +572,12 @@ export async function deleteEvent(
 
 export interface EventRegistrationResponse {
   message: string;
-  eventId: string;
+  eventId?: string;
   userId?: string;
+  quantity?: number;
 }
 
-export async function registerForEvent(eventId: string): Promise<{ ok: boolean; data?: EventRegistrationResponse; error?: string }> {
+export async function registerForEvent(eventId: string, quantity: number = 1): Promise<{ ok: boolean; data?: EventRegistrationResponse; error?: string }> {
   try {
     const token = getAuthToken();
     if (!token) {
@@ -589,6 +590,7 @@ export async function registerForEvent(eventId: string): Promise<{ ok: boolean; 
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
+      body: JSON.stringify({ quantity }),
     });
 
     if (!response.ok) {

@@ -7,7 +7,7 @@ interface BookingModalProps {
   event: Event | null
   isOpen: boolean
   onClose: () => void
-  onBookingSuccess: (eventId: string) => void
+  onBookingSuccess: (eventId: string, quantity: number) => void
 }
 
 export default function BookingModal({ event, isOpen, onClose, onBookingSuccess }: BookingModalProps) {
@@ -49,17 +49,15 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
     setBookingError('')
 
     try {
-      // Register for the event (for now, we'll register once per ticket quantity)
-      // Note: The backend currently supports one registration per user, so we'll register once
-      // If you need multiple tickets per registration, the backend would need to support that
-      const result = await registerForEvent(event.id)
+      // Register for the event with the selected ticket quantity
+      const result = await registerForEvent(event.id, ticketQuantity)
       
       if (result.ok) {
         setBookingSuccess(true)
         setIsBooking(false)
         
-        // Notify parent of successful booking
-        onBookingSuccess(event.id)
+        // Notify parent of successful booking with quantity
+        onBookingSuccess(event.id, ticketQuantity)
         
         // Auto close after 3 seconds to give user time to see confirmation
         setTimeout(() => {

@@ -13,6 +13,7 @@ frontend/.vite/
 
 # Backend build outputs
 backend/event-planner-server
+backend/event-planner
 *.exe
 *.exe~
 *.dll
