@@ -1,5 +1,3 @@
-// Auth helpers that use the backend API
-
 import * as api from './api'
 
 type User = {
@@ -11,7 +9,6 @@ type User = {
 const SESSION_KEY = 'app_session'
 const TOKEN_KEY = 'auth_token'
 
-// Decode JWT token to get user info (simple base64 decode)
 function decodeJWT(token: string): { userId?: number; email?: string } | null {
   try {
     const parts = token.split('.')
@@ -35,14 +32,12 @@ export function register(email: string, password: string, name: string) {
 export function login(email: string, password: string, role?: 'admin' | 'user') {
   return api.login(email, password).then(result => {
     if (result.ok && result.token) {
-      // Decode token to get user info
       const userInfo = decodeJWT(result.token)
       if (userInfo) {
-        // Store user session info - use role from backend response
         const user: User = {
           email: result.email || userInfo.email || email,
           userId: userInfo.userId,
-          role: (result.role as 'admin' | 'user') || role || 'user' // Use role from backend, fallback to selected role
+          role: (result.role as 'admin' | 'user') || role || 'user'
         }
         localStorage.setItem(SESSION_KEY, JSON.stringify(user))
       }
@@ -62,7 +57,6 @@ export function currentUser(): User | null {
     if (!raw) return null
     
     const user = JSON.parse(raw) as User
-    // Verify token still exists
     const token = api.getAuthTokenFromStorage()
     if (!token) {
       localStorage.removeItem(SESSION_KEY)

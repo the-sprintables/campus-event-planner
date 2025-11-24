@@ -23,17 +23,15 @@ func signup(context *gin.Context) {
 
 	err = user.Save()
 	if err != nil {
-		// Log the actual error for debugging
 		log.Printf("Error saving user: %v", err)
-		
-		// Check if it's a duplicate email error (SQLite unique constraint)
-		if strings.Contains(err.Error(), "UNIQUE constraint failed") || 
-		   strings.Contains(err.Error(), "duplicate") ||
-		   strings.Contains(err.Error(), "constraint") {
+
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") ||
+			strings.Contains(err.Error(), "duplicate") ||
+			strings.Contains(err.Error(), "constraint") {
 			context.JSON(http.StatusConflict, gin.H{"message": "Email already exists"})
 			return
 		}
-		
+
 		context.JSON(http.StatusInternalServerError, gin.H{"message": "Could not save user"})
 		return
 	}
@@ -65,20 +63,20 @@ func login(context *gin.Context) {
 	}
 
 	context.JSON(http.StatusOK, gin.H{
-		"message": "Login successful", 
-		"token": token,
-		"role": user.Role,
-		"email": user.Email,
+		"message": "Login successful",
+		"token":   token,
+		"role":    user.Role,
+		"email":   user.Email,
 	})
 }
 
 func updatePassword(context *gin.Context) {
 	userId := context.GetInt64("userId")
-	
+
 	var request struct {
 		NewPassword string `json:"newPassword" binding:"required"`
 	}
-	
+
 	err := context.ShouldBindJSON(&request)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"message": "Could not parse data"})
@@ -90,7 +88,6 @@ func updatePassword(context *gin.Context) {
 		return
 	}
 
-	// Get user by ID
 	var user models.User
 	query := "SELECT id, email, COALESCE(role, 'user') FROM users WHERE id = ?"
 	row := db.DB.QueryRow(query, userId)
@@ -100,7 +97,6 @@ func updatePassword(context *gin.Context) {
 		return
 	}
 
-	// Update password
 	err = user.UpdatePassword(request.NewPassword)
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"message": "Could not update password"})
@@ -119,11 +115,9 @@ func getProfile(context *gin.Context) {
 		return
 	}
 
-	// Parse preferred event types from comma-separated string to array
 	var preferredEventTypes []string
 	if user.PreferredEventTypes != "" {
 		preferredEventTypes = strings.Split(user.PreferredEventTypes, ",")
-		// Trim whitespace from each type
 		for i, eventType := range preferredEventTypes {
 			preferredEventTypes[i] = strings.TrimSpace(eventType)
 		}
@@ -152,17 +146,14 @@ func updateProfile(context *gin.Context) {
 		return
 	}
 
-	// Get user by ID
 	user, err := models.GetUserByID(userId)
 	if err != nil {
 		context.JSON(http.StatusNotFound, gin.H{"message": "User not found"})
 		return
 	}
 
-	// Convert preferred event types array to comma-separated string
 	preferredEventTypesStr := strings.Join(request.PreferredEventTypes, ",")
 
-	// Update profile
 	err = user.UpdateProfile(request.Name, preferredEventTypesStr)
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"message": "Could not update profile"})
@@ -170,8 +161,8 @@ func updateProfile(context *gin.Context) {
 	}
 
 	context.JSON(http.StatusOK, gin.H{
-		"message": "Profile updated successfully",
-		"name":    request.Name,
+		"message":             "Profile updated successfully",
+		"name":                request.Name,
 		"preferredEventTypes": request.PreferredEventTypes,
 	})
 }

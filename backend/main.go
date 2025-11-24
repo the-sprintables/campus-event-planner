@@ -13,7 +13,6 @@ func main() {
 	db.InitDB()
 	server := gin.Default()
 
-	// Enable CORS so React frontend can call API
 	// Use AllowOriginFunc for more flexible origin checking
 	server.Use(cors.New(cors.Config{
 		AllowOriginFunc: func(origin string) bool {
