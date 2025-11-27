@@ -13,9 +13,9 @@ pipeline {
         GIT_REPO_URL = '/Users/mac/Documents/TUS/Agile Build & Delivery/campus-event-planner'
         GIT_BRANCH = 'development'
         GIT_CREDENTIALS_ID = ''
-        
+
         // SonarQube
-        SONAR_TOKEN_CREDENTIAL_ID = 'SONAR_TOKEN'  // Set to Jenkins credential ID for SonarQube token (or leave empty if using global env var)
+        SONAR_TOKEN_CREDENTIAL_ID = 'SONAR_TOKEN'  // Set to Jenkins credential ID for SonarQube token
     }
 
     stages {
@@ -142,6 +142,66 @@ pipeline {
             }
         }
 
+        stage('Test') {
+            parallel {
+                stage('Frontend Test') {
+                    steps {
+                        dir('frontend') {
+                            script {
+                                runNpm('ci')
+                                sh "${nvmLoad} npx tsc --noEmit"
+                                // Run tests with coverage
+                                runNpm('run test:coverage')
+                            }
+                        }
+                    }
+                    post {
+                        always {
+                            script {
+                                dir('frontend') {
+                                    // Archive coverage report if it exists
+                                    if (fileExists('coverage/lcov.info')) {
+                                        archiveArtifacts artifacts: 'coverage/**', allowEmptyArchive: false
+                                        echo "Frontend coverage report generated successfully"
+                                    } else {
+                                        echo "Warning: frontend/coverage/lcov.info not found"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('Backend Test') {
+                    steps {
+                        dir('backend') {
+                            sh 'go mod download'
+                            sh 'go test ./... -v -coverprofile=coverage.out -covermode=atomic || true'
+                        }
+                    }
+                    post {
+                        always {
+                            script {
+                                // Fix coverage paths from event-planner/ to backend/ for SonarQube
+                                if (fileExists('backend/coverage.out')) {
+                                    sh 'chmod +x scripts/fix-coverage-paths.sh || true'
+                                    sh './scripts/fix-coverage-paths.sh backend/coverage.out || true'
+                                }
+                                
+                                dir('backend') {
+                                    script {
+                                        if (fileExists('coverage.out')) {
+                                            archiveArtifacts artifacts: 'coverage.out', allowEmptyArchive: false
+                                            sh "go tool cover -func=coverage.out | tail -1 || true"
+                                        } else { echo "coverage.out not found" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         stage('SonarQube Analysis') {
             steps {
                 timeout(time: 30, unit: 'MINUTES') {
@@ -196,12 +256,6 @@ pipeline {
                             error("Java 17+ required for SonarQube Scanner but not found. Please install Java 17 or higher.")
                         }
                         
-                        // Check if frontend coverage exists
-                        def hasFrontendCoverage = fileExists('frontend/coverage/lcov.info')
-                        if (!hasFrontendCoverage) {
-                            echo "Note: frontend/coverage/lcov.info not found. Frontend coverage will be skipped."
-                        }
-                        
                         // Build sonar-scanner command
                         def sonarArgs = [
                             '-Dsonar.projectKey=the-sprintables_campus-event-planner',
@@ -209,80 +263,34 @@ pipeline {
                             '-Dsonar.sources=backend,frontend/src',
                             '-Dsonar.tests=frontend/src,backend/routes',
                             '-Dsonar.go.coverage.reportPaths=backend/coverage.out',
+                            '-Dsonar.javascript.lcov.reportPaths=frontend/coverage/lcov.info',
                             '-Dsonar.host.url=https://sonarcloud.io',
                             '-Dsonar.login=$SONAR_TOKEN'
                         ]
                         
-                        // Add frontend coverage if available
-                        if (hasFrontendCoverage) {
-                            sonarArgs.add('-Dsonar.javascript.lcov.reportPaths=frontend/coverage/lcov.info')
-                        }
-                        
                         // Use SONAR_TOKEN from Jenkins credential
-                        withCredentials([string(credentialsId: env.SONAR_TOKEN_CREDENTIAL_ID, variable: 'SONAR_TOKEN')]) {
-                            echo "Starting SonarQube analysis..."
-                            sh "npx sonar-scanner ${sonarArgs.join(' ')}"
+                        if (env.SONAR_TOKEN_CREDENTIAL_ID) {
+                            withCredentials([string(credentialsId: env.SONAR_TOKEN_CREDENTIAL_ID, variable: 'SONAR_TOKEN')]) {
+                                echo "Starting SonarQube analysis..."
+                                sh "npx sonar-scanner ${sonarArgs.join(' ')}"
+                            }
+                        } else {
+                            error("SONAR_TOKEN_CREDENTIAL_ID is not set. Please configure the SonarQube token credential ID in Jenkins.")
                         }
                     }
                 }
             }
         }
 
-        stage('Build and Test') {
+        stage('Build') {
             parallel {
-                stage('Frontend') {
-                    stages {
-                        stage('Frontend Test') {
-                            steps {
-                                dir('frontend') {
-                                    script {
-                                        runNpm('ci')
-                                        sh "${nvmLoad} npx tsc --noEmit"
-                                    }
-                                }
-                            }
-                        }
-                        stage('Frontend Build') {
-                            steps {
-                                dir('frontend') { script { runNpm('run build') } }
-                            }
-                        }
+                stage('Frontend Build') {
+                    steps {
+                        dir('frontend') { script { runNpm('run build') } }
                     }
                 }
-                stage('Backend') {
-                    stages {
-                        stage('Backend Test') {
-                            steps {
-                                dir('backend') {
-                                    sh 'go mod download'
-                                    sh 'go test ./... -v -coverprofile=coverage.out -covermode=atomic || true'
-                                }
-                            }
-                            post {
-                                always {
-                                    script {
-                                        // Fix coverage paths from event-planner/ to backend/ for SonarQube
-                                        if (fileExists('backend/coverage.out')) {
-                                            sh 'chmod +x scripts/fix-coverage-paths.sh || true'
-                                            sh './scripts/fix-coverage-paths.sh backend/coverage.out || true'
-                                        }
-                                        
-                                        dir('backend') {
-                                            script {
-                                                if (fileExists('coverage.out')) {
-                                                    archiveArtifacts artifacts: 'coverage.out', allowEmptyArchive: false
-                                                    sh "go tool cover -func=coverage.out | tail -1 || true"
-                                                } else { echo "coverage.out not found" }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        stage('Backend Build') {
-                            steps { dir('backend') { sh 'CGO_ENABLED=1 go build -o event-planner-server ./main.go' } }
-                        }
-                    }
+                stage('Backend Build') {
+                    steps { dir('backend') { sh 'CGO_ENABLED=1 go build -o event-planner-server ./main.go' } }
                 }
             }
         }
