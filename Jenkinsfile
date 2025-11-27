@@ -9,8 +9,7 @@ pipeline {
         DOCKER_CREDENTIALS_ID = 'docker-hub-credentials'  // Set to Jenkins credential ID for Docker Hub (username/password or access token)
 
         // Git
-        // GIT_REPO_URL = 'https://github.com/the-sprintables/campus-event-planner.git'
-        GIT_REPO_URL = '/Users/mac/Documents/TUS/Agile Build & Delivery/campus-event-planner'
+        GIT_REPO_URL = 'https://github.com/the-sprintables/campus-event-planner.git'
         GIT_BRANCH = 'development'
         GIT_CREDENTIALS_ID = ''
 
