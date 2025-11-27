@@ -261,9 +261,10 @@ pipeline {
                             '-Dsonar.projectKey=the-sprintables_campus-event-planner',
                             '-Dsonar.organization=the-sprintables',
                             '-Dsonar.sources=backend,frontend/src',
-                            '-Dsonar.tests=frontend/src,backend/routes',
+                            '-Dsonar.tests=frontend/src,backend',
                             '-Dsonar.go.coverage.reportPaths=backend/coverage.out',
                             '-Dsonar.javascript.lcov.reportPaths=frontend/coverage/lcov.info',
+                            '-Dsonar.coverage.exclusions=frontend/src/main.tsx,frontend/src/**/types.ts,frontend/vite.config.ts,frontend/**/vite-env.d.ts,frontend/src/**/*.test.{ts,tsx},frontend/src/**/*.spec.{ts,tsx},frontend/src/test/**',
                             '-Dsonar.host.url=https://sonarcloud.io',
                             '-Dsonar.login=$SONAR_TOKEN'
                         ]
