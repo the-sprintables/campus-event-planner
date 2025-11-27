@@ -9,9 +9,13 @@ pipeline {
         DOCKER_CREDENTIALS_ID = 'docker-hub-credentials'  // Set to Jenkins credential ID for Docker Hub (username/password or access token)
 
         // Git
-        GIT_REPO_URL = 'https://github.com/the-sprintables/campus-event-planner.git'
+        // GIT_REPO_URL = 'https://github.com/the-sprintables/campus-event-planner.git'
+        GIT_REPO_URL = '/Users/mac/Documents/TUS/Agile Build & Delivery/campus-event-planner'
         GIT_BRANCH = 'development'
         GIT_CREDENTIALS_ID = ''
+        
+        // SonarQube
+        SONAR_TOKEN_CREDENTIAL_ID = 'SONAR_TOKEN'  // Set to Jenkins credential ID for SonarQube token (or leave empty if using global env var)
     }
 
     stages {
@@ -140,50 +144,85 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                script {
-                    // Set up Java (required for SonarQube scanner)
-                    def javaPath = findTool('java', ['/usr/bin/java', '/usr/local/bin/java', '/opt/homebrew/bin/java'])
-                    if (!javaPath) {
-                        echo "Java not found. Attempting to install..."
-                        brewPath = findTool('brew', ['/usr/local/bin/brew', '/opt/homebrew/bin/brew'])
-                        if (brewPath) {
-                            sh "${brewPath} install openjdk@17 || true"
-                            javaPath = findTool('java', ['/usr/bin/java', '/usr/local/bin/java', '/opt/homebrew/bin/java', '/opt/homebrew/opt/openjdk@17/bin/java'])
+                timeout(time: 30, unit: 'MINUTES') {
+                    script {
+                        // Setup Java 17+ for SonarQube Scanner
+                        def javaPath = null
+                        def javaPaths = [
+                            '/opt/homebrew/opt/openjdk@17/bin/java',
+                            '/opt/homebrew/opt/openjdk@21/bin/java',
+                            '/usr/local/opt/openjdk@17/bin/java',
+                            '/usr/local/opt/openjdk@21/bin/java'
+                        ]
+                        
+                        // Try to find Java 17+ in common locations
+                        for (def path : javaPaths) {
+                            if (fileExists(path)) {
+                                def version = sh(script: "${path} -version 2>&1 | head -1", returnStdout: true).trim()
+                                def versionMatch = version =~ /version "(\d+)/
+                                if (versionMatch) {
+                                    def majorVersion = versionMatch[0][1] as Integer
+                                    if (majorVersion >= 17) {
+                                        javaPath = path
+                                        echo "Found Java ${majorVersion}: ${version}"
+                                        break
+                                    }
+                                }
+                            }
                         }
-                    }
-                    if (javaPath) {
-                        env.PATH = "${javaPath.replaceFirst('/java$','')}:${env.PATH}"
-                        showVersion("Java", "java -version")
-                    } else {
-                        echo "Warning: Java not found. SonarQube scan may fail."
-                    }
-
-                    // Generate Go test coverage for SonarQube
-                    dir('backend') {
-                        sh 'go mod download'
-                        sh 'go test ./routes/... -coverprofile=coverage.out -coverpkg=./routes,./models,./db,./utils,./middlewares -covermode=atomic || true'
-                    }
-
-                    // Run SonarQube scan
-                    // Note: Requires sonar-scanner CLI to be installed or SONAR_TOKEN environment variable
-                    def sonarScanner = findTool('sonar-scanner', ['/usr/local/bin/sonar-scanner', '/opt/homebrew/bin/sonar-scanner'])
-                    if (!sonarScanner) {
-                        // Try to use sonar-scanner from PATH
-                        sonarScanner = sh(script: 'command -v sonar-scanner || echo ""', returnStdout: true).trim()
-                    }
-                    
-                    if (sonarScanner) {
-                        echo "Running SonarQube scan with sonar-scanner..."
-                        // Use sonar-project.properties if available, otherwise pass parameters directly
-                        if (fileExists('sonar-project.properties')) {
-                            sh "${sonarScanner}"
+                        
+                        // Fallback to system Java if it's 17+
+                        if (!javaPath) {
+                            def systemJava = sh(script: 'command -v java || echo ""', returnStdout: true).trim()
+                            if (systemJava) {
+                                def version = sh(script: "${systemJava} -version 2>&1 | head -1", returnStdout: true).trim()
+                                def versionMatch = version =~ /version "(\d+)/
+                                if (versionMatch) {
+                                    def majorVersion = versionMatch[0][1] as Integer
+                                    if (majorVersion >= 17) {
+                                        javaPath = systemJava
+                                        echo "Using system Java ${majorVersion}: ${version}"
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (javaPath) {
+                            def javaHome = javaPath.replaceFirst('/bin/java$', '')
+                            env.JAVA_HOME = javaHome
+                            env.PATH = "${javaPath.replaceFirst('/java$','')}:${env.PATH}"
+                            sh "java -version"
                         } else {
-                            sh "${sonarScanner} -Dsonar.projectKey=the-sprintables_campus-event-planner -Dsonar.organization=the-sprintables"
+                            error("Java 17+ required for SonarQube Scanner but not found. Please install Java 17 or higher.")
                         }
-                    } else {
-                        echo "Warning: sonar-scanner CLI not found. SonarQube scan skipped."
-                        echo "To enable SonarQube analysis, please install sonar-scanner or configure it in Jenkins."
-                        echo "Installation: https://docs.sonarqube.org/latest/analyzing-source-code/scanners/sonarscanner/"
+                        
+                        // Check if frontend coverage exists
+                        def hasFrontendCoverage = fileExists('frontend/coverage/lcov.info')
+                        if (!hasFrontendCoverage) {
+                            echo "Note: frontend/coverage/lcov.info not found. Frontend coverage will be skipped."
+                        }
+                        
+                        // Build sonar-scanner command
+                        def sonarArgs = [
+                            '-Dsonar.projectKey=the-sprintables_campus-event-planner',
+                            '-Dsonar.organization=the-sprintables',
+                            '-Dsonar.sources=backend,frontend/src',
+                            '-Dsonar.tests=frontend/src,backend/routes',
+                            '-Dsonar.go.coverage.reportPaths=backend/coverage.out',
+                            '-Dsonar.host.url=https://sonarcloud.io',
+                            '-Dsonar.login=$SONAR_TOKEN'
+                        ]
+                        
+                        // Add frontend coverage if available
+                        if (hasFrontendCoverage) {
+                            sonarArgs.add('-Dsonar.javascript.lcov.reportPaths=frontend/coverage/lcov.info')
+                        }
+                        
+                        // Use SONAR_TOKEN from Jenkins credential
+                        withCredentials([string(credentialsId: env.SONAR_TOKEN_CREDENTIAL_ID, variable: 'SONAR_TOKEN')]) {
+                            echo "Starting SonarQube analysis..."
+                            sh "npx sonar-scanner ${sonarArgs.join(' ')}"
+                        }
                     }
                 }
             }
@@ -221,12 +260,20 @@ pipeline {
                             }
                             post {
                                 always {
-                                    dir('backend') {
-                                        script {
-                                            if (fileExists('coverage.out')) {
-                                                archiveArtifacts artifacts: 'coverage.out', allowEmptyArchive: false
-                                                sh "go tool cover -func=coverage.out | tail -1 || true"
-                                            } else { echo "coverage.out not found" }
+                                    script {
+                                        // Fix coverage paths from event-planner/ to backend/ for SonarQube
+                                        if (fileExists('backend/coverage.out')) {
+                                            sh 'chmod +x scripts/fix-coverage-paths.sh || true'
+                                            sh './scripts/fix-coverage-paths.sh backend/coverage.out || true'
+                                        }
+                                        
+                                        dir('backend') {
+                                            script {
+                                                if (fileExists('coverage.out')) {
+                                                    archiveArtifacts artifacts: 'coverage.out', allowEmptyArchive: false
+                                                    sh "go tool cover -func=coverage.out | tail -1 || true"
+                                                } else { echo "coverage.out not found" }
+                                            }
                                         }
                                     }
                                 }

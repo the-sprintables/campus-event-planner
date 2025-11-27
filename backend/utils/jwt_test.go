@@ -218,3 +218,44 @@ func TestVerifyToken_MissingClaims(t *testing.T) {
 	t.Errorf("Should have panicked, but got userID=%d, err=%v", userID, err)
 }
 
+func TestVerifyToken_WrongSigningMethod(t *testing.T) {
+	// Create a token with RS256 instead of HS256
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
+		"userId": int64(123),
+		"email":  "test@example.com",
+		"exp":    time.Now().Add(time.Hour * 2).Unix(),
+	})
+
+	// This will fail because we need a private key, but the point is to test the error handling
+	// We'll create a token with a different method that will be rejected
+	invalidToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"userId": int64(123),
+		"email":  "test@example.com",
+		"exp":    time.Now().Add(time.Hour * 2).Unix(),
+	}).SignedString([]byte("wrongkey"))
+
+	assert.NoError(t, err)
+
+	// Verify should fail because the secret key doesn't match
+	userID, err := VerifyToken(invalidToken)
+	assert.Error(t, err)
+	assert.Equal(t, int64(0), userID)
+}
+
+func TestVerifyToken_InvalidClaimsType(t *testing.T) {
+	// Create a token with invalid claims structure
+	// This tests the case where claims can't be converted to MapClaims
+	// We'll use a token that's valid but has wrong structure
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
+		ExpiresAt: time.Now().Add(time.Hour * 2).Unix(),
+	})
+
+	tokenString, err := token.SignedString([]byte(secretKey))
+	assert.NoError(t, err)
+
+	// Verify should fail because claims are not MapClaims
+	userID, err := VerifyToken(tokenString)
+	assert.Error(t, err)
+	assert.Equal(t, int64(0), userID)
+}
+

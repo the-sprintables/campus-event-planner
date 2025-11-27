@@ -21,7 +21,9 @@ func setupUserTestDB(t *testing.T) *sql.DB {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
-		role TEXT DEFAULT 'user'
+		role TEXT DEFAULT 'user',
+		name TEXT,
+		preferred_event_types TEXT
 	);
 	`
 	_, err = testDB.Exec(createTables)

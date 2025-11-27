@@ -47,7 +47,9 @@ func setupUsersTestDB(t *testing.T) *sql.DB {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
-		role TEXT DEFAULT 'user'
+		role TEXT DEFAULT 'user',
+		name TEXT,
+		preferred_event_types TEXT
 	);
 	`
 	_, err = testDB.Exec(createTables)
@@ -140,11 +142,11 @@ func TestSignup_DuplicateEmail(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, http.StatusConflict, w.Code)
 
 	var response map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &response)
-	assert.Equal(t, "Could not save user", response["message"])
+	assert.Equal(t, "Email already exists", response["message"])
 }
 
 func TestLogin_Valid(t *testing.T) {
@@ -430,6 +432,177 @@ func TestUpdatePassword_UserNotFound(t *testing.T) {
 	jsonPayload, _ := json.Marshal(payload)
 	req, _ := http.NewRequest("PUT", "/password?userId=99999", bytes.NewBuffer(jsonPayload))
 	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.Equal(t, "User not found", response["message"])
+}
+
+func setupProfileTestRouter() *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.GET("/users/profile", func(c *gin.Context) {
+		userIdStr := c.Query("userId")
+		if userIdStr != "" {
+			userId, _ := strconv.ParseInt(userIdStr, 10, 64)
+			c.Set("userId", userId)
+		} else {
+			c.Set("userId", int64(1))
+		}
+		getProfile(c)
+	})
+	router.PUT("/users/profile", func(c *gin.Context) {
+		userIdStr := c.Query("userId")
+		if userIdStr != "" {
+			userId, _ := strconv.ParseInt(userIdStr, 10, 64)
+			c.Set("userId", userId)
+		} else {
+			c.Set("userId", int64(1))
+		}
+		updateProfile(c)
+	})
+	return router
+}
+
+func TestUpdateProfile_Valid(t *testing.T) {
+	testDB := setupUsersTestDB(t)
+	defer testDB.Close()
+
+	originalDB := db.DB
+	db.DB = testDB
+	defer func() { db.DB = originalDB }()
+
+	// Create a test user
+	user := models.User{
+		Email:    "test@example.com",
+		Password: "password123",
+		Role:     "user",
+		Name:     "Original Name",
+	}
+	err := user.Save()
+	assert.NoError(t, err)
+
+	// Get the actual user ID from database since Save() uses value receiver
+	var actualUserID int64
+	err = testDB.QueryRow("SELECT id FROM users WHERE email = ?", "test@example.com").Scan(&actualUserID)
+	assert.NoError(t, err)
+
+	router := setupProfileTestRouter()
+	payload := map[string]interface{}{
+		"name":                "Updated Name",
+		"preferredEventTypes": []string{"workshop", "conference"},
+	}
+	jsonPayload, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("PUT", "/users/profile?userId="+strconv.FormatInt(actualUserID, 10), bytes.NewBuffer(jsonPayload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.Equal(t, "Profile updated successfully", response["message"])
+	assert.Equal(t, "Updated Name", response["name"])
+}
+
+func TestUpdateProfile_UserNotFound(t *testing.T) {
+	testDB := setupUsersTestDB(t)
+	defer testDB.Close()
+
+	originalDB := db.DB
+	db.DB = testDB
+	defer func() { db.DB = originalDB }()
+
+	router := setupProfileTestRouter()
+	payload := map[string]interface{}{
+		"name":                "Updated Name",
+		"preferredEventTypes": []string{"workshop"},
+	}
+	jsonPayload, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("PUT", "/users/profile?userId=99999", bytes.NewBuffer(jsonPayload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.Equal(t, "User not found", response["message"])
+}
+
+func TestUpdateProfile_InvalidJSON(t *testing.T) {
+	testDB := setupUsersTestDB(t)
+	defer testDB.Close()
+
+	originalDB := db.DB
+	db.DB = testDB
+	defer func() { db.DB = originalDB }()
+
+	router := setupProfileTestRouter()
+	req, _ := http.NewRequest("PUT", "/users/profile?userId=1", bytes.NewBuffer([]byte("invalid json")))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.Equal(t, "Could not parse data", response["message"])
+}
+
+func TestGetProfile_Valid(t *testing.T) {
+	testDB := setupUsersTestDB(t)
+	defer testDB.Close()
+
+	originalDB := db.DB
+	db.DB = testDB
+	defer func() { db.DB = originalDB }()
+
+	// Create a test user
+	user := models.User{
+		Email:    "test@example.com",
+		Password: "password123",
+		Role:     "user",
+		Name:     "Test User",
+	}
+	err := user.Save()
+	assert.NoError(t, err)
+
+	// Get the actual user ID from database since Save() uses value receiver
+	var actualUserID int64
+	err = testDB.QueryRow("SELECT id FROM users WHERE email = ?", "test@example.com").Scan(&actualUserID)
+	assert.NoError(t, err)
+
+	router := setupProfileTestRouter()
+	req, _ := http.NewRequest("GET", "/users/profile?userId="+strconv.FormatInt(actualUserID, 10), nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.Equal(t, "test@example.com", response["email"])
+	assert.Equal(t, "user", response["role"])
+}
+
+func TestGetProfile_UserNotFound(t *testing.T) {
+	testDB := setupUsersTestDB(t)
+	defer testDB.Close()
+
+	originalDB := db.DB
+	db.DB = testDB
+	defer func() { db.DB = originalDB }()
+
+	router := setupProfileTestRouter()
+	req, _ := http.NewRequest("GET", "/users/profile?userId=99999", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 

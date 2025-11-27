@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"event-planner/db"
@@ -62,7 +63,9 @@ func TestRegisterForEvent_Valid(t *testing.T) {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
-		role TEXT DEFAULT 'user'
+		role TEXT DEFAULT 'user',
+		name TEXT,
+		preferred_event_types TEXT
 	);
 	CREATE TABLE IF NOT EXISTS events (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -76,12 +79,14 @@ func TestRegisterForEvent_Valid(t *testing.T) {
 		price REAL,
 		priority TEXT,
 		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
+		event_type TEXT,
 		FOREIGN KEY (userID) REFERENCES users(id)
 	);
 	CREATE TABLE IF NOT EXISTS registrations (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		event_id INTEGER,
 		user_id INTEGER,
+		quantity INTEGER DEFAULT 1,
 		FOREIGN KEY (event_id) REFERENCES events(id),
 		FOREIGN KEY (user_id) REFERENCES users(id)
 	);
@@ -168,7 +173,9 @@ func TestRegisterForEvent_EventNotFound(t *testing.T) {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
-		role TEXT DEFAULT 'user'
+		role TEXT DEFAULT 'user',
+		name TEXT,
+		preferred_event_types TEXT
 	);
 	CREATE TABLE IF NOT EXISTS events (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -182,12 +189,14 @@ func TestRegisterForEvent_EventNotFound(t *testing.T) {
 		price REAL,
 		priority TEXT,
 		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
+		event_type TEXT,
 		FOREIGN KEY (userID) REFERENCES users(id)
 	);
 	CREATE TABLE IF NOT EXISTS registrations (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		event_id INTEGER,
 		user_id INTEGER,
+		quantity INTEGER DEFAULT 1,
 		FOREIGN KEY (event_id) REFERENCES events(id),
 		FOREIGN KEY (user_id) REFERENCES users(id)
 	);
@@ -228,7 +237,9 @@ func TestRegisterForEvent_DuplicateRegistration(t *testing.T) {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
-		role TEXT DEFAULT 'user'
+		role TEXT DEFAULT 'user',
+		name TEXT,
+		preferred_event_types TEXT
 	);
 	CREATE TABLE IF NOT EXISTS events (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -242,12 +253,14 @@ func TestRegisterForEvent_DuplicateRegistration(t *testing.T) {
 		price REAL,
 		priority TEXT,
 		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
+		event_type TEXT,
 		FOREIGN KEY (userID) REFERENCES users(id)
 	);
 	CREATE TABLE IF NOT EXISTS registrations (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		event_id INTEGER,
 		user_id INTEGER,
+		quantity INTEGER DEFAULT 1,
 		UNIQUE(event_id, user_id),
 		FOREIGN KEY (event_id) REFERENCES events(id),
 		FOREIGN KEY (user_id) REFERENCES users(id)
@@ -322,7 +335,9 @@ func TestRegisterForEvent_MissingUserId(t *testing.T) {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
-		role TEXT DEFAULT 'user'
+		role TEXT DEFAULT 'user',
+		name TEXT,
+		preferred_event_types TEXT
 	);
 	CREATE TABLE IF NOT EXISTS events (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -336,12 +351,14 @@ func TestRegisterForEvent_MissingUserId(t *testing.T) {
 		price REAL,
 		priority TEXT,
 		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
+		event_type TEXT,
 		FOREIGN KEY (userID) REFERENCES users(id)
 	);
 	CREATE TABLE IF NOT EXISTS registrations (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		event_id INTEGER,
 		user_id INTEGER,
+		quantity INTEGER DEFAULT 1,
 		FOREIGN KEY (event_id) REFERENCES events(id),
 		FOREIGN KEY (user_id) REFERENCES users(id)
 	);
@@ -411,7 +428,9 @@ func TestCancelRegistration_Valid(t *testing.T) {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
-		role TEXT DEFAULT 'user'
+		role TEXT DEFAULT 'user',
+		name TEXT,
+		preferred_event_types TEXT
 	);
 	CREATE TABLE IF NOT EXISTS events (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -425,12 +444,14 @@ func TestCancelRegistration_Valid(t *testing.T) {
 		price REAL,
 		priority TEXT,
 		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
+		event_type TEXT,
 		FOREIGN KEY (userID) REFERENCES users(id)
 	);
 	CREATE TABLE IF NOT EXISTS registrations (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		event_id INTEGER,
 		user_id INTEGER,
+		quantity INTEGER DEFAULT 1,
 		FOREIGN KEY (event_id) REFERENCES events(id),
 		FOREIGN KEY (user_id) REFERENCES users(id)
 	);
@@ -531,7 +552,9 @@ func TestCancelRegistration_NoRegistrationExists(t *testing.T) {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
-		role TEXT DEFAULT 'user'
+		role TEXT DEFAULT 'user',
+		name TEXT,
+		preferred_event_types TEXT
 	);
 	CREATE TABLE IF NOT EXISTS events (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -545,12 +568,14 @@ func TestCancelRegistration_NoRegistrationExists(t *testing.T) {
 		price REAL,
 		priority TEXT,
 		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
+		event_type TEXT,
 		FOREIGN KEY (userID) REFERENCES users(id)
 	);
 	CREATE TABLE IF NOT EXISTS registrations (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		event_id INTEGER,
 		user_id INTEGER,
+		quantity INTEGER DEFAULT 1,
 		FOREIGN KEY (event_id) REFERENCES events(id),
 		FOREIGN KEY (user_id) REFERENCES users(id)
 	);
@@ -617,7 +642,9 @@ func TestCancelRegistration_MissingUserId(t *testing.T) {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
-		role TEXT DEFAULT 'user'
+		role TEXT DEFAULT 'user',
+		name TEXT,
+		preferred_event_types TEXT
 	);
 	CREATE TABLE IF NOT EXISTS events (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -631,12 +658,14 @@ func TestCancelRegistration_MissingUserId(t *testing.T) {
 		price REAL,
 		priority TEXT,
 		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
+		event_type TEXT,
 		FOREIGN KEY (userID) REFERENCES users(id)
 	);
 	CREATE TABLE IF NOT EXISTS registrations (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		event_id INTEGER,
 		user_id INTEGER,
+		quantity INTEGER DEFAULT 1,
 		FOREIGN KEY (event_id) REFERENCES events(id),
 		FOREIGN KEY (user_id) REFERENCES users(id)
 	);
@@ -693,4 +722,568 @@ func TestCancelRegistration_MissingUserId(t *testing.T) {
 	var response map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &response)
 	assert.Equal(t, "Event does not exist or has already been cancelled", response["message"])
+}
+
+func TestRegisterForEvent_WithQuantity(t *testing.T) {
+	// Setup test database
+	testDB, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("Failed to open test database: %v", err)
+	}
+	defer testDB.Close()
+
+	// Create tables
+	createTables := `
+	CREATE TABLE IF NOT EXISTS users (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		email TEXT NOT NULL UNIQUE,
+		password TEXT NOT NULL,
+		role TEXT DEFAULT 'user',
+		name TEXT,
+		preferred_event_types TEXT
+	);
+	CREATE TABLE IF NOT EXISTS events (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		description TEXT NOT NULL,
+		location TEXT NOT NULL,
+		dateTime DATETIME NOT NULL,
+		userID INTEGER,
+		imageData TEXT,
+		color TEXT,
+		price REAL,
+		priority TEXT,
+		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
+		event_type TEXT,
+		FOREIGN KEY (userID) REFERENCES users(id)
+	);
+	CREATE TABLE IF NOT EXISTS registrations (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		event_id INTEGER,
+		user_id INTEGER,
+		quantity INTEGER DEFAULT 1,
+		FOREIGN KEY (event_id) REFERENCES events(id),
+		FOREIGN KEY (user_id) REFERENCES users(id)
+	);
+	`
+	_, err = testDB.Exec(createTables)
+	if err != nil {
+		t.Fatalf("Failed to create tables: %v", err)
+	}
+
+	// Set the global DB connection
+	originalDB := db.DB
+	db.DB = testDB
+	defer func() { db.DB = originalDB }()
+
+	// Create a test user
+	user := models.User{
+		Email:    "test@example.com",
+		Password: "password123",
+		Role:     "user",
+	}
+	err = user.Save()
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Create a test event
+	event := models.Event{
+		Name:             "Test Event",
+		Description:      "Test Description",
+		Location:         "Test Location",
+		DateTime:         time.Now(),
+		UserID:           user.ID,
+		TicketsAvailable: 10,
+	}
+	err = event.Save()
+	if err != nil {
+		t.Fatalf("Failed to create test event: %v", err)
+	}
+
+	router := setupRegisterTestRouter()
+	payload := map[string]int64{
+		"quantity": 3,
+	}
+	jsonPayload, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("POST", "/events/"+strconv.FormatInt(event.ID, 10)+"/register?userId="+strconv.FormatInt(user.ID, 10), bytes.NewBuffer(jsonPayload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.Equal(t, "Registered for event successfully", response["message"])
+	assert.Equal(t, float64(3), response["quantity"])
+
+	// Verify registration was created with correct quantity
+	var quantity int64
+	err = testDB.QueryRow("SELECT quantity FROM registrations WHERE event_id = ? AND user_id = ?", event.ID, user.ID).Scan(&quantity)
+	if err != nil {
+		t.Fatalf("Failed to verify registration: %v", err)
+	}
+	assert.Equal(t, int64(3), quantity)
+}
+
+func TestRegisterForEvent_NotEnoughTickets(t *testing.T) {
+	// Setup test database
+	testDB, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("Failed to open test database: %v", err)
+	}
+	defer testDB.Close()
+
+	// Create tables
+	createTables := `
+	CREATE TABLE IF NOT EXISTS users (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		email TEXT NOT NULL UNIQUE,
+		password TEXT NOT NULL,
+		role TEXT DEFAULT 'user',
+		name TEXT,
+		preferred_event_types TEXT
+	);
+	CREATE TABLE IF NOT EXISTS events (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		description TEXT NOT NULL,
+		location TEXT NOT NULL,
+		dateTime DATETIME NOT NULL,
+		userID INTEGER,
+		imageData TEXT,
+		color TEXT,
+		price REAL,
+		priority TEXT,
+		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
+		event_type TEXT,
+		FOREIGN KEY (userID) REFERENCES users(id)
+	);
+	CREATE TABLE IF NOT EXISTS registrations (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		event_id INTEGER,
+		user_id INTEGER,
+		quantity INTEGER DEFAULT 1,
+		FOREIGN KEY (event_id) REFERENCES events(id),
+		FOREIGN KEY (user_id) REFERENCES users(id)
+	);
+	`
+	_, err = testDB.Exec(createTables)
+	if err != nil {
+		t.Fatalf("Failed to create tables: %v", err)
+	}
+
+	// Set the global DB connection
+	originalDB := db.DB
+	db.DB = testDB
+	defer func() { db.DB = originalDB }()
+
+	// Create a test user
+	user := models.User{
+		Email:    "test@example.com",
+		Password: "password123",
+		Role:     "user",
+	}
+	err = user.Save()
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Create a test event with only 2 tickets
+	event := models.Event{
+		Name:             "Test Event",
+		Description:      "Test Description",
+		Location:         "Test Location",
+		DateTime:         time.Now(),
+		UserID:           user.ID,
+		TicketsAvailable: 2,
+	}
+	err = event.Save()
+	if err != nil {
+		t.Fatalf("Failed to create test event: %v", err)
+	}
+
+	router := setupRegisterTestRouter()
+	payload := map[string]int64{
+		"quantity": 5, // Request more than available
+	}
+	jsonPayload, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("POST", "/events/"+strconv.FormatInt(event.ID, 10)+"/register?userId="+strconv.FormatInt(user.ID, 10), bytes.NewBuffer(jsonPayload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.Contains(t, response["message"].(string), "Not enough tickets")
+}
+
+func TestRegisterForEvent_AlreadyRegistered(t *testing.T) {
+	// Setup test database
+	testDB, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("Failed to open test database: %v", err)
+	}
+	defer testDB.Close()
+
+	// Create tables
+	createTables := `
+	CREATE TABLE IF NOT EXISTS users (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		email TEXT NOT NULL UNIQUE,
+		password TEXT NOT NULL,
+		role TEXT DEFAULT 'user',
+		name TEXT,
+		preferred_event_types TEXT
+	);
+	CREATE TABLE IF NOT EXISTS events (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		description TEXT NOT NULL,
+		location TEXT NOT NULL,
+		dateTime DATETIME NOT NULL,
+		userID INTEGER,
+		imageData TEXT,
+		color TEXT,
+		price REAL,
+		priority TEXT,
+		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
+		event_type TEXT,
+		FOREIGN KEY (userID) REFERENCES users(id)
+	);
+	CREATE TABLE IF NOT EXISTS registrations (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		event_id INTEGER,
+		user_id INTEGER,
+		quantity INTEGER DEFAULT 1,
+		FOREIGN KEY (event_id) REFERENCES events(id),
+		FOREIGN KEY (user_id) REFERENCES users(id)
+	);
+	`
+	_, err = testDB.Exec(createTables)
+	if err != nil {
+		t.Fatalf("Failed to create tables: %v", err)
+	}
+
+	// Set the global DB connection
+	originalDB := db.DB
+	db.DB = testDB
+	defer func() { db.DB = originalDB }()
+
+	// Create a test user
+	user := models.User{
+		Email:    "test@example.com",
+		Password: "password123",
+		Role:     "user",
+	}
+	err = user.Save()
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Create a test event
+	event := models.Event{
+		Name:             "Test Event",
+		Description:      "Test Description",
+		Location:         "Test Location",
+		DateTime:         time.Now(),
+		UserID:           user.ID,
+		TicketsAvailable: 10,
+	}
+	err = event.Save()
+	if err != nil {
+		t.Fatalf("Failed to create test event: %v", err)
+	}
+
+	router := setupRegisterTestRouter()
+	
+	// Register first time
+	req1, _ := http.NewRequest("POST", "/events/"+strconv.FormatInt(event.ID, 10)+"/register?userId="+strconv.FormatInt(user.ID, 10), nil)
+	w1 := httptest.NewRecorder()
+	router.ServeHTTP(w1, req1)
+	assert.Equal(t, http.StatusCreated, w1.Code)
+
+	// Try to register again - should fail
+	req2, _ := http.NewRequest("POST", "/events/"+strconv.FormatInt(event.ID, 10)+"/register?userId="+strconv.FormatInt(user.ID, 10), nil)
+	w2 := httptest.NewRecorder()
+	router.ServeHTTP(w2, req2)
+
+	assert.Equal(t, http.StatusConflict, w2.Code)
+
+	var response map[string]interface{}
+	json.Unmarshal(w2.Body.Bytes(), &response)
+	assert.Equal(t, "User already registered for this event", response["message"])
+}
+
+func TestCancelRegistration_ErrorPath(t *testing.T) {
+	// Setup test database
+	testDB, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("Failed to open test database: %v", err)
+	}
+	defer testDB.Close()
+
+	// Create tables
+	createTables := `
+	CREATE TABLE IF NOT EXISTS users (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		email TEXT NOT NULL UNIQUE,
+		password TEXT NOT NULL,
+		role TEXT DEFAULT 'user',
+		name TEXT,
+		preferred_event_types TEXT
+	);
+	CREATE TABLE IF NOT EXISTS events (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		description TEXT NOT NULL,
+		location TEXT NOT NULL,
+		dateTime DATETIME NOT NULL,
+		userID INTEGER,
+		imageData TEXT,
+		color TEXT,
+		price REAL,
+		priority TEXT,
+		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
+		event_type TEXT,
+		FOREIGN KEY (userID) REFERENCES users(id)
+	);
+	CREATE TABLE IF NOT EXISTS registrations (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		event_id INTEGER,
+		user_id INTEGER,
+		quantity INTEGER DEFAULT 1,
+		FOREIGN KEY (event_id) REFERENCES events(id),
+		FOREIGN KEY (user_id) REFERENCES users(id)
+	);
+	`
+	_, err = testDB.Exec(createTables)
+	if err != nil {
+		t.Fatalf("Failed to create tables: %v", err)
+	}
+
+	// Set the global DB connection
+	originalDB := db.DB
+	db.DB = testDB
+	defer func() { db.DB = originalDB }()
+
+	// Create a test user
+	user := models.User{
+		Email:    "test@example.com",
+		Password: "password123",
+		Role:     "user",
+	}
+	err = user.Save()
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Create a test event
+	event := models.Event{
+		Name:             "Test Event",
+		Description:      "Test Description",
+		Location:         "Test Location",
+		DateTime:         time.Now(),
+		UserID:           user.ID,
+		TicketsAvailable: 10,
+	}
+	err = event.Save()
+	if err != nil {
+		t.Fatalf("Failed to create test event: %v", err)
+	}
+
+	router := setupRegisterTestRouter()
+	
+	// Try to cancel a registration that doesn't exist
+	req, _ := http.NewRequest("DELETE", "/events/"+strconv.FormatInt(event.ID, 10)+"/register?userId="+strconv.FormatInt(user.ID, 10), nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.Equal(t, "Event does not exist or has already been cancelled", response["message"])
+}
+
+func TestGetRegistrationStatus_InvalidEventID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.GET("/events/:id/registration/status", func(c *gin.Context) {
+		userIdStr := c.Query("userId")
+		if userIdStr != "" {
+			userId, _ := strconv.ParseInt(userIdStr, 10, 64)
+			c.Set("userId", userId)
+		} else {
+			c.Set("userId", int64(1))
+		}
+		getRegistrationStatus(c)
+	})
+
+	req, _ := http.NewRequest("GET", "/events/invalid/registration/status?userId=1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.Equal(t, "Could not parse event id", response["message"])
+}
+
+func TestRegisterForEvent_EventNotFoundError(t *testing.T) {
+	// Setup test database
+	testDB, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("Failed to open test database: %v", err)
+	}
+	defer testDB.Close()
+
+	// Create tables
+	createTables := `
+	CREATE TABLE IF NOT EXISTS users (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		email TEXT NOT NULL UNIQUE,
+		password TEXT NOT NULL,
+		role TEXT DEFAULT 'user',
+		name TEXT,
+		preferred_event_types TEXT
+	);
+	CREATE TABLE IF NOT EXISTS events (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		description TEXT NOT NULL,
+		location TEXT NOT NULL,
+		dateTime DATETIME NOT NULL,
+		userID INTEGER,
+		imageData TEXT,
+		color TEXT,
+		price REAL,
+		priority TEXT,
+		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
+		event_type TEXT,
+		FOREIGN KEY (userID) REFERENCES users(id)
+	);
+	CREATE TABLE IF NOT EXISTS registrations (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		event_id INTEGER,
+		user_id INTEGER,
+		quantity INTEGER DEFAULT 1,
+		FOREIGN KEY (event_id) REFERENCES events(id),
+		FOREIGN KEY (user_id) REFERENCES users(id)
+	);
+	`
+	_, err = testDB.Exec(createTables)
+	if err != nil {
+		t.Fatalf("Failed to create tables: %v", err)
+	}
+
+	// Set the global DB connection
+	originalDB := db.DB
+	db.DB = testDB
+	defer func() { db.DB = originalDB }()
+
+	// Create a test user
+	user := models.User{
+		Email:    "test@example.com",
+		Password: "password123",
+		Role:     "user",
+	}
+	err = user.Save()
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	router := setupRegisterTestRouter()
+	
+	// Try to register for non-existent event
+	req, _ := http.NewRequest("POST", "/events/99999/register?userId="+strconv.FormatInt(user.ID, 10), nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.Equal(t, "Could not fetch event", response["message"])
+}
+
+func TestCancelRegistration_EventNotFoundError(t *testing.T) {
+	// Setup test database
+	testDB, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("Failed to open test database: %v", err)
+	}
+	defer testDB.Close()
+
+	// Create tables
+	createTables := `
+	CREATE TABLE IF NOT EXISTS users (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		email TEXT NOT NULL UNIQUE,
+		password TEXT NOT NULL,
+		role TEXT DEFAULT 'user',
+		name TEXT,
+		preferred_event_types TEXT
+	);
+	CREATE TABLE IF NOT EXISTS events (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		description TEXT NOT NULL,
+		location TEXT NOT NULL,
+		dateTime DATETIME NOT NULL,
+		userID INTEGER,
+		imageData TEXT,
+		color TEXT,
+		price REAL,
+		priority TEXT,
+		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
+		event_type TEXT,
+		FOREIGN KEY (userID) REFERENCES users(id)
+	);
+	CREATE TABLE IF NOT EXISTS registrations (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		event_id INTEGER,
+		user_id INTEGER,
+		quantity INTEGER DEFAULT 1,
+		FOREIGN KEY (event_id) REFERENCES events(id),
+		FOREIGN KEY (user_id) REFERENCES users(id)
+	);
+	`
+	_, err = testDB.Exec(createTables)
+	if err != nil {
+		t.Fatalf("Failed to create tables: %v", err)
+	}
+
+	// Set the global DB connection
+	originalDB := db.DB
+	db.DB = testDB
+	defer func() { db.DB = originalDB }()
+
+	// Create a test user
+	user := models.User{
+		Email:    "test@example.com",
+		Password: "password123",
+		Role:     "user",
+	}
+	err = user.Save()
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	router := setupRegisterTestRouter()
+	
+	// Try to cancel registration for non-existent event
+	req, _ := http.NewRequest("DELETE", "/events/99999/register?userId="+strconv.FormatInt(user.ID, 10), nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.Equal(t, "Could not fetch event", response["message"])
 }
