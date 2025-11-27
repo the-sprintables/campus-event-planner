@@ -202,30 +202,15 @@ func TestVerifyToken_MissingClaims(t *testing.T) {
 	tokenString, err := token.SignedString([]byte(secretKey))
 	assert.NoError(t, err)
 
-	// Verify should panic because userId claim is missing
-	// This reveals a potential bug in VerifyToken - it should check if userId exists
-	defer func() {
-		if r := recover(); r != nil {
-			// Expected panic when userId claim is missing
-			assert.NotNil(t, r)
-		} else {
-			t.Error("Expected panic when userId claim is missing")
-		}
-	}()
-
+	// Verify should return an error because userId claim is missing
+	// This is now properly handled - returning an error instead of panicking
 	userID, err := VerifyToken(tokenString)
-	// Should not reach here due to panic
-	t.Errorf("Should have panicked, but got userID=%d, err=%v", userID, err)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "userId not found in claims")
+	assert.Equal(t, int64(0), userID)
 }
 
 func TestVerifyToken_WrongSigningMethod(t *testing.T) {
-	// Create a token with RS256 instead of HS256
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
-		"userId": int64(123),
-		"email":  "test@example.com",
-		"exp":    time.Now().Add(time.Hour * 2).Unix(),
-	})
-
 	// This will fail because we need a private key, but the point is to test the error handling
 	// We'll create a token with a different method that will be rejected
 	invalidToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
