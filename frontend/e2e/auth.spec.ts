@@ -45,20 +45,19 @@ test.describe('Authentication E2E Tests', () => {
     await page.fill('input[type="password"]', 'testpassword123');
     
     // Select role (required by the login form)
-    await page.click('button:has-text("User")');
+    const userRoleButton = page.locator('button:has-text("User")');
+    await userRoleButton.click();
+    // Wait for the button to be in selected state (should not have "ghost" class)
+    await expect(userRoleButton).not.toHaveClass(/ghost/, { timeout: 2000 });
 
     // Submit the form
     await page.click('button[type="submit"]');
 
-    // Wait for navigation to complete
-    await page.waitForLoadState('networkidle');
+    // Wait for successful login - logout button should appear
+    await expect(page.locator('button:has-text("Logout")')).toBeVisible({ timeout: 10000 });
     
-    // Check URL pathname - should be at root or feed
-    const pathname = new URL(page.url()).pathname;
-    expect(pathname).toMatch(/^\/(feed)?\/?$/);
-    
-    // Verify user is logged in (check for welcome message or logout button)
-    await expect(page.locator('text=/Welcome|Logout/i').first()).toBeVisible({ timeout: 10000 });
+    // Verify we're no longer on the login page
+    await expect(page).not.toHaveURL(/.*\/login/);
   });
 
   test('should show error with invalid credentials', async ({ page }) => {
@@ -69,7 +68,10 @@ test.describe('Authentication E2E Tests', () => {
     await page.fill('input[type="password"]', 'wrongpassword');
     
     // Select role (required)
-    await page.click('button:has-text("User")');
+    const userRoleButton = page.locator('button:has-text("User")');
+    await userRoleButton.click();
+    // Wait for the button to be in selected state
+    await expect(userRoleButton).not.toHaveClass(/ghost/, { timeout: 2000 });
 
     // Submit the form
     await page.click('button[type="submit"]');

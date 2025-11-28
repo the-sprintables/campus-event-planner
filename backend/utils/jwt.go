@@ -46,8 +46,19 @@ func VerifyToken(token string) (int64, error) {
 		return 0, errors.New("Could not parse claims")
 	}
 
-	// email := claims["email"].(string)
-	userId := int64(claims["userId"].(float64))
+	// Check if userId exists in claims
+	userIdValue, exists := claims["userId"]
+	if !exists {
+		return 0, errors.New("userId not found in claims")
+	}
+
+	// Safely convert userId to int64
+	userIdFloat, ok := userIdValue.(float64)
+	if !ok {
+		return 0, errors.New("userId is not a valid number")
+	}
+
+	userId := int64(userIdFloat)
 
 	return userId, nil
 }

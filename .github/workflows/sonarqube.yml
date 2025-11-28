@@ -26,10 +26,23 @@ jobs:
         with:
           go-version: '1.25.2'
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Generate frontend test coverage
+        working-directory: ./frontend
+        run: npm run test:coverage
+
       - name: Generate Go test coverage
         working-directory: ./backend
         run: |
-          go test ./routes/... -coverprofile=coverage.out -coverpkg=./routes,./models,./db,./utils,./middlewares -covermode=atomic
+          go test ./... -coverprofile=coverage.out -covermode=atomic
 
       - name: SonarCloud Scan
         uses: sonarsource/sonarcloud-github-action@v2
@@ -40,3 +53,4 @@ jobs:
           args: >
             -Dsonar.projectKey=the-sprintables_campus-event-planner
             -Dsonar.organization=the-sprintables
+            -Dsonar.coverage.exclusions=frontend/src/main.tsx,frontend/src/**/types.ts,frontend/vite.config.ts,frontend/**/vite-env.d.ts,frontend/src/**/*.test.{ts,tsx},frontend/src/**/*.spec.{ts,tsx},frontend/src/test/**
