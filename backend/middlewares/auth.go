@@ -8,11 +8,17 @@ import (
 )
 
 func Authenticate(context *gin.Context) {
-	token := context.Request.Header.Get("Authorization")
+	authHeader := context.Request.Header.Get("Authorization")
 
-	if token == "" {
+	if authHeader == "" {
 		context.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "No authorization token provided"})
 		return
+	}
+
+	// Extract token from "Bearer <token>" format
+	token := authHeader
+	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		token = authHeader[7:]
 	}
 
 	userId, err := utils.VerifyToken(token)

@@ -28,3 +28,12 @@ sonar-scanner
 - Backend (Go): `go test ./... -coverprofile=backend/coverage.out` is used by CI; local runs can produce the same file.
 
 Configuration lives in `sonar-project.properties` at the repo root.
+
+## End-to-End Testing
+
+This project includes comprehensive E2E tests for both backend and frontend:
+
+- **Backend E2E Tests**: Located in `backend/routes/e2e_test.go`, test complete API workflows
+- **Frontend E2E Tests**: Located in `frontend/e2e/`, use Playwright to test the full application
+
+See [docs/E2E_TESTING.md](docs/E2E_TESTING.md) for detailed documentation on running and writing E2E tests.

@@ -1,69 +1,142 @@
-import React, { useState, useEffect } from 'react'
-import { Routes, Route, Link } from 'react-router-dom'
-import { Event } from './types'
-import EventList from './components/EventList'
-import EventForm from './components/EventForm'
-import EventDetails from './components/EventDetails'
-import EventsPage from './pages/Events'
-import ManageEventsPage from './pages/ManageEvents'
-import Register from './pages/Register'
-import Login from './pages/Login'
-import RequireAuth from './components/RequireAuth'
-import RequireAdmin from './components/RequireAdmin'
-import { currentUser, logout } from './auth'
-import { useNavigate } from 'react-router-dom'
-
-const EVENTS_KEY = 'app_events'
-
-function getStoredEvents(): Event[] {
-  try {
-    const raw = localStorage.getItem(EVENTS_KEY)
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
-}
-
-function saveStoredEvents(events: Event[]) {
-  try {
-    localStorage.setItem(EVENTS_KEY, JSON.stringify(events))
-  } catch {
-    // ignore
-  }
-}
+import { useState, useEffect } from "react";
+import { Routes, Route, Link } from "react-router-dom";
+import { Event } from "./types";
+import EventsPage from "./pages/Events";
+import ManageEventsPage from "./pages/ManageEvents";
+import Register from "./pages/Register";
+import Login from "./pages/Login";
+import RequireAuth from "./components/RequireAuth";
+import RequireAdmin from "./components/RequireAdmin";
+import { currentUser, logout } from "./auth";
+import { useNavigate } from "react-router-dom";
+import * as api from "./api";
+import Feed from "./pages/Feed";
+import Footer from "./pages/Footer";
+import Profile from "./pages/Profile";
 
 export default function App() {
-  const navigate = useNavigate()
-  const user = currentUser()
-  function handleLogout() {
-    logout()
-    navigate('/login')
-  }
-  const [events, setEvents] = useState<Event[]>(() => getStoredEvents())
+  const navigate = useNavigate();
+  const user = currentUser();
+
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      const stored = localStorage.getItem('theme');
+      if (stored === 'light' || stored === 'dark') return stored;
+    } catch (e) {}
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  });
 
   useEffect(() => {
-    saveStoredEvents(events)
-  }, [events])
+    try {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+    } catch (e) {}
+  }, [theme]);
 
-  function addEvent(e: Event) {
-    setEvents(prev => [e, ...prev])
+  function handleLogout() {
+    logout();
+    navigate("/login");
   }
 
-  function updateEvent(updated: Event) {
-    setEvents(prev => prev.map(ev => ev.id === updated.id ? updated : ev))
+  useEffect(() => {
+    async function fetchEvents() {
+      setLoading(true);
+      setError(null);
+
+      const isBackendReachable = await api.checkBackendHealth();
+      if (!isBackendReachable) {
+        setError(
+          "Cannot connect to backend server. Please make sure the backend is running on http://localhost:8080"
+        );
+        setLoading(false);
+        return;
+      }
+
+      const result = await api.getEvents();
+      if (result.ok) {
+        setEvents(result.events || []);
+      } else {
+        setError(result.error || "Failed to load events");
+        setEvents([]);
+      }
+      setLoading(false);
+    }
+
+    fetchEvents();
+  }, []);
+
+  async function addEvent(
+    e: Event
+  ): Promise<{ success: boolean; error?: string }> {
+    const result = await api.createEvent(e);
+    if (result.ok && result.event) {
+      setEvents((prev) => [result.event!, ...prev]);
+      return { success: true };
+    } else {
+      return {
+        success: false,
+        error: result.error || "Failed to create event",
+      };
+    }
   }
 
-  function removeEvent(id: string) {
-    setEvents(prev => prev.filter(ev => ev.id !== id))
+  async function updateEvent(
+    updated: Event
+  ): Promise<{ success: boolean; error?: string }> {
+    const result = await api.updateEvent(updated.id, updated);
+    if (result.ok) {
+      // Refresh events from server to get latest data
+      const fetchResult = await api.getEvents();
+      if (fetchResult.ok && fetchResult.events) {
+        setEvents(fetchResult.events);
+      }
+      return { success: true };
+    } else {
+      return {
+        success: false,
+        error: result.error || "Failed to update event",
+      };
+    }
+  }
+
+  async function removeEvent(id: string) {
+    const result = await api.deleteEvent(id);
+    if (result.ok) {
+      setEvents((prev) => prev.filter((ev) => ev.id !== id));
+    } else {
+      alert(result.error || "Failed to delete event");
+    }
   }
 
   return (
-    <div className="app">
+    <div className="app bg-white flex flex-col min-h-screen">
       <header>
-        <h1> Sprintables Campus Event Planner</h1>
+        <Link to="/" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <img
+            src="/src/assets/logo-name.png"
+            alt="Logo"
+            style={{
+              height: 60,
+              width: 60,
+              borderRadius: "8px",
+              margin: "-10px 0",
+            }}
+          />
+          <span style={{ fontWeight: "bold", fontSize: 20 }}>
+            The Sprintables
+          </span>
+        </Link>
+
         <nav>
           <Link to="/">View events</Link> |
-          {user?.role === 'admin' && (
+          {user?.role === "admin" && (
             <>
               <Link to="/manage">Manage events</Link> |
             </>
@@ -76,28 +149,62 @@ export default function App() {
           )}
           {user && (
             <>
-              <span>Welcome, {user.name}</span>
-              <button onClick={handleLogout} style={{ marginLeft: 8 }}>Logout</button>
+              <Link to="/profile">Profile</Link> |
+              <span>Welcome, {user.email}</span>
+              <button
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                title="Toggle dark mode"
+                style={{ marginLeft: 8 }}
+              >
+                {theme === 'dark' ? '☀️' : '🌙'}
+              </button>
+              <button onClick={handleLogout} style={{ marginLeft: 8 }}>
+                Logout
+              </button>
             </>
           )}
         </nav>
       </header>
-      <main>
+
+      <main className="flex-1">
+        {loading && <div>Loading events...</div>}
+        {error && <div className="error">{error}</div>}
         <Routes>
-          <Route path="/" element={(
-            <RequireAuth>
-              <EventsPage events={events} />
-            </RequireAuth>
-          )} />
-          <Route path="/manage" element={(
-            <RequireAdmin>
-              <ManageEventsPage initialEvents={events} onCreate={addEvent} onDelete={removeEvent} onUpdate={updateEvent} />
-            </RequireAdmin>
-          )} />
+          <Route
+            path="/"
+            element={
+              <RequireAuth>
+                <EventsPage events={events} onEventUpdate={updateEvent} />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/manage"
+            element={
+              <RequireAdmin>
+                <ManageEventsPage
+                  initialEvents={events}
+                  onCreate={addEvent}
+                  onDelete={removeEvent}
+                  onUpdate={updateEvent}
+                />
+              </RequireAdmin>
+            }
+          />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/feed" element={<Feed />} />
+          <Route
+            path="/profile"
+            element={
+              <RequireAuth>
+                <Profile />
+              </RequireAuth>
+            }
+          />
         </Routes>
       </main>
+      <Footer />
     </div>
-  )
+  );
 }

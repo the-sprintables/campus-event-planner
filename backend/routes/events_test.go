@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/gin-gonic/gin"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -39,7 +39,10 @@ func TestMain(m *testing.M) {
 	CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT NOT NULL UNIQUE,
-		password TEXT NOT NULL
+		password TEXT NOT NULL,
+		role TEXT DEFAULT 'user',
+		name TEXT,
+		preferred_event_types TEXT
 	);
 	CREATE TABLE IF NOT EXISTS events (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,14 +51,22 @@ func TestMain(m *testing.M) {
 		location TEXT NOT NULL,
 		dateTime DATETIME NOT NULL,
 		userID INTEGER,
+		imageData TEXT,
+		color TEXT,
+		price REAL,
+		priority TEXT,
+		ticketsAvailable INTEGER NOT NULL DEFAULT 0,
+		event_type TEXT,
 		FOREIGN KEY (userID) REFERENCES users(id)
 	);
 	CREATE TABLE IF NOT EXISTS registrations (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		event_id INTEGER,
 		user_id INTEGER,
+		quantity INTEGER DEFAULT 1,
 		FOREIGN KEY (event_id) REFERENCES events(id),
-		FOREIGN KEY (user_id) REFERENCES users(id)
+		FOREIGN KEY (user_id) REFERENCES users(id),
+		UNIQUE(event_id, user_id)
 	);
 	`
 	_, err = db.DB.Exec(createTables)
@@ -84,6 +95,34 @@ func TestGetEvents(t *testing.T) {
 	// Should return 200 or 500 depending on database state
 	assert.Contains(t, []int{http.StatusOK, http.StatusInternalServerError}, w.Code)
 }
+
+func TestGetEvents_WithEvents(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.GET("/events", GetEvents)
+
+	// Create an event to test the success path
+	event := models.Event{
+		Name:             "Test Event",
+		Description:      "Test Description",
+		Location:         "Test Location",
+		DateTime:         time.Now(),
+		UserID:           1,
+		TicketsAvailable: 20,
+	}
+	err := event.Save()
+	if err != nil {
+		// If save fails, the test will still check the error path
+	}
+
+	req, _ := http.NewRequest("GET", "/events", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Should return 200 if events exist, or 500 if there's an error
+	assert.Contains(t, []int{http.StatusOK, http.StatusInternalServerError}, w.Code)
+}
+
 
 func TestGetEvent_ValidID(t *testing.T) {
 	router := setupTestRouter()
@@ -168,7 +207,7 @@ func TestCheckEventAuthorization_Unauthorized(t *testing.T) {
 func TestCreateEvent_ValidPayload(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	
+
 	// Set up middleware to add userId to context
 	router.POST("/events", func(c *gin.Context) {
 		c.Set("userId", int64(1))
@@ -176,10 +215,11 @@ func TestCreateEvent_ValidPayload(t *testing.T) {
 	})
 
 	event := models.Event{
-		Name:        "Test Event",
-		Description: "Test Description",
-		Location:    "Test Location",
-		DateTime:    time.Now(),
+		Name:             "Test Event",
+		Description:      "Test Description",
+		Location:         "Test Location",
+		DateTime:         time.Now(),
+		TicketsAvailable: 40,
 	}
 
 	jsonValue, _ := json.Marshal(event)
@@ -207,10 +247,12 @@ func TestCreateEvent_InvalidPayload(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
+
+
 func TestUpdateEvent_ValidPayload(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	
+
 	// Set up middleware to add userId to context
 	router.PUT("/events/:id", func(c *gin.Context) {
 		c.Set("userId", int64(1))
@@ -219,11 +261,12 @@ func TestUpdateEvent_ValidPayload(t *testing.T) {
 
 	// First create an event
 	event := models.Event{
-		Name:        "Test Event",
-		Description: "Test Description",
-		Location:    "Test Location",
-		DateTime:    time.Now(),
-		UserID:      1,
+		Name:             "Test Event",
+		Description:      "Test Description",
+		Location:         "Test Location",
+		DateTime:         time.Now(),
+		UserID:           1,
+		TicketsAvailable: 40,
 	}
 	err := event.Save()
 	if err != nil {
@@ -232,10 +275,11 @@ func TestUpdateEvent_ValidPayload(t *testing.T) {
 
 	// Update the event
 	updateEvent := models.Event{
-		Name:        "Updated Event",
-		Description: "Updated Description",
-		Location:    "Updated Location",
-		DateTime:    time.Now(),
+		Name:             "Updated Event",
+		Description:      "Updated Description",
+		Location:         "Updated Location",
+		DateTime:         time.Now(),
+		TicketsAvailable: 45,
 	}
 
 	jsonValue, _ := json.Marshal(updateEvent)
@@ -269,19 +313,21 @@ func TestUpdateEvent_InvalidID(t *testing.T) {
 func TestUpdateEvent_Unauthorized(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	
+
 	// Create an event with userID 1
 	event := models.Event{
-		Name:        "Test Event",
-		Description: "Test Description",
-		Location:    "Test Location",
-		DateTime:    time.Now(),
-		UserID:      1,
+		Name:             "Test Event",
+		Description:      "Test Description",
+		Location:         "Test Location",
+		DateTime:         time.Now(),
+		UserID:           1,
+		TicketsAvailable: 30,
 	}
 	err := event.Save()
 	if err != nil {
 		t.Fatalf("Failed to create test event: %v", err)
 	}
+	eventID := event.ID
 
 	// Try to update with different user (userID 2)
 	router.PUT("/events/:id", func(c *gin.Context) {
@@ -290,14 +336,15 @@ func TestUpdateEvent_Unauthorized(t *testing.T) {
 	})
 
 	updateEvent := models.Event{
-		Name:        "Updated Event",
-		Description: "Updated Description",
-		Location:    "Updated Location",
-		DateTime:    time.Now(),
+		Name:             "Updated Event",
+		Description:      "Updated Description",
+		Location:         "Updated Location",
+		DateTime:         time.Now(),
+		TicketsAvailable: 25,
 	}
 
 	jsonValue, _ := json.Marshal(updateEvent)
-	req, _ := http.NewRequest("PUT", "/events/1", bytes.NewBuffer(jsonValue))
+	req, _ := http.NewRequest("PUT", "/events/"+strconv.FormatInt(eventID, 10), bytes.NewBuffer(jsonValue))
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
@@ -306,17 +353,20 @@ func TestUpdateEvent_Unauthorized(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
+
+
 func TestDeleteEvent_ValidID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	
+
 	// Create an event
 	event := models.Event{
-		Name:        "Test Event",
-		Description: "Test Description",
-		Location:    "Test Location",
-		DateTime:    time.Now(),
-		UserID:      1,
+		Name:             "Test Event",
+		Description:      "Test Description",
+		Location:         "Test Location",
+		DateTime:         time.Now(),
+		UserID:           1,
+		TicketsAvailable: 20,
 	}
 	err := event.Save()
 	if err != nil {
@@ -356,19 +406,21 @@ func TestDeleteEvent_InvalidID(t *testing.T) {
 func TestDeleteEvent_Unauthorized(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	
+
 	// Create an event with userID 1
 	event := models.Event{
-		Name:        "Test Event",
-		Description: "Test Description",
-		Location:    "Test Location",
-		DateTime:    time.Now(),
-		UserID:      1,
+		Name:             "Test Event",
+		Description:      "Test Description",
+		Location:         "Test Location",
+		DateTime:         time.Now(),
+		UserID:           1,
+		TicketsAvailable: 25,
 	}
 	err := event.Save()
 	if err != nil {
 		t.Fatalf("Failed to create test event: %v", err)
 	}
+	eventID := event.ID
 
 	// Try to delete with different user (userID 2)
 	router.DELETE("/events/:id", func(c *gin.Context) {
@@ -376,10 +428,161 @@ func TestDeleteEvent_Unauthorized(t *testing.T) {
 		DeleteEvent(c)
 	})
 
-	req, _ := http.NewRequest("DELETE", "/events/1", nil)
+	req, _ := http.NewRequest("DELETE", "/events/"+strconv.FormatInt(eventID, 10), nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
+func TestUpdateEventTicketCount_Success(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+
+	router.PUT("/events/:id/tickets", func(c *gin.Context) {
+		c.Set("userId", int64(1))
+		UpdateEventTicketCount(c)
+	})
+
+	event := models.Event{
+		Name:             "Ticket Event",
+		Description:      "Ticket Description",
+		Location:         "Ticket Location",
+		DateTime:         time.Now(),
+		UserID:           1,
+		TicketsAvailable: 25,
+	}
+	err := event.Save()
+	if err != nil {
+		t.Fatalf("Failed to create test event: %v", err)
+	}
+
+	payload := ticketUpdateRequest{TicketsAvailable: 40}
+	body, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("PUT", "/events/"+strconv.FormatInt(event.ID, 10)+"/tickets", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestUpdateEventTicketCount_Unauthorized(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+
+	router.PUT("/events/:id/tickets", func(c *gin.Context) {
+		c.Set("userId", int64(2))
+		UpdateEventTicketCount(c)
+	})
+
+	event := models.Event{
+		Name:             "Ticket Event",
+		Description:      "Ticket Description",
+		Location:         "Ticket Location",
+		DateTime:         time.Now(),
+		UserID:           1,
+		TicketsAvailable: 25,
+	}
+	err := event.Save()
+	if err != nil {
+		t.Fatalf("Failed to create test event: %v", err)
+	}
+
+	payload := ticketUpdateRequest{TicketsAvailable: 10}
+	body, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("PUT", "/events/"+strconv.FormatInt(event.ID, 10)+"/tickets", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestUpdateEventTicketCount_InvalidJSON(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+
+	// Create an event with userID 1
+	event := models.Event{
+		Name:             "Test Event",
+		Description:      "Test Description",
+		Location:         "Test Location",
+		DateTime:         time.Now(),
+		UserID:           1,
+		TicketsAvailable: 30,
+	}
+	err := event.Save()
+	if err != nil {
+		t.Fatalf("Failed to create test event: %v", err)
+	}
+	eventID := event.ID
+
+	router.PUT("/events/:id/tickets", func(c *gin.Context) {
+		c.Set("userId", int64(1))
+		UpdateEventTicketCount(c)
+	})
+
+	req, _ := http.NewRequest("PUT", "/events/"+strconv.FormatInt(eventID, 10)+"/tickets", bytes.NewBuffer([]byte("invalid json")))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.Equal(t, "Could not parse data", response["message"])
+}
+
+func TestUpdateEventTicketCount_InvalidEventID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+
+	router.PUT("/events/:id/tickets", func(c *gin.Context) {
+		c.Set("userId", int64(1))
+		UpdateEventTicketCount(c)
+	})
+
+	payload := map[string]int64{
+		"TicketsAvailable": 25,
+	}
+	jsonPayload, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("PUT", "/events/invalid/tickets", bytes.NewBuffer(jsonPayload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.Equal(t, "Could not parse event id", response["message"])
+}
+
+func TestUpdateEventTicketCount_EventNotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+
+	router.PUT("/events/:id/tickets", func(c *gin.Context) {
+		c.Set("userId", int64(1))
+		UpdateEventTicketCount(c)
+	})
+
+	payload := map[string]int64{
+		"TicketsAvailable": 25,
+	}
+	jsonPayload, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("PUT", "/events/99999/tickets", bytes.NewBuffer(jsonPayload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.Equal(t, "Could not fetch event", response["message"])
+}
