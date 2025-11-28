@@ -259,6 +259,8 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
         registrationCount: (selected.registrationCount || 0) + quantity      })
     }
     
+    // Dispatch custom event to notify Profile page
+    window.dispatchEvent(new CustomEvent('eventRegistrationChanged'))
   }
 
   const handleCancelBookingClick = (eventId: string) => {
@@ -295,6 +297,8 @@ export default function EventsPage({ events, onEventUpdate }: EventsPageProps) {
           })
         }
         
+        // Dispatch custom event to notify Profile page
+        window.dispatchEvent(new CustomEvent('eventRegistrationChanged'))
         
         setCancelConfirmOpen(false)
         setEventToCancel(null)

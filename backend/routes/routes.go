@@ -24,6 +24,7 @@ func RegisterRoutes(server *gin.Engine) {
 	authenticated.GET("/users/profile", getProfile)
 	authenticated.PUT("/users/profile", updateProfile)
 	authenticated.PUT("/users/password", updatePassword)
+	authenticated.GET("/users/registered-events", getRegisteredEvents)
 
 	server.POST("/signup", signup)
 	server.POST("/login", login)

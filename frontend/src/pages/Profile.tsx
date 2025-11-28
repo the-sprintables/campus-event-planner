@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { currentUser } from '../auth'
 import * as api from '../api'
+import { Event } from '../types'
 
 const eventTypes = [
   "Sports & Fitness",
@@ -24,6 +25,7 @@ export default function Profile() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const lastLoadedEmailRef = useRef<string | null>(null)
+  const eventsLoadedRef = useRef<boolean>(false)
   
   // Profile fields
   const [email, setEmail] = useState('')
@@ -35,6 +37,10 @@ export default function Profile() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null)
+  
+  // Registered events
+  const [registeredEvents, setRegisteredEvents] = useState<Event[]>([])
+  const [loadingEvents, setLoadingEvents] = useState(false)
 
   const loadProfile = useCallback(async () => {
     setLoading(true)
@@ -59,19 +65,83 @@ export default function Profile() {
     setLoading(false)
   }, [])
 
+  const loadRegisteredEvents = useCallback(async () => {
+    setLoadingEvents(true)
+    try {
+      const result = await api.getUserRegisteredEvents()
+      if (result.ok && result.events) {
+        setRegisteredEvents(result.events)
+        eventsLoadedRef.current = true
+      } else {
+        console.error('Failed to load registered events:', result.error)
+        // Set empty array on error to show "no events" message
+        setRegisteredEvents([])
+        eventsLoadedRef.current = true
+      }
+    } catch (error) {
+      console.error('Error loading registered events:', error)
+      setRegisteredEvents([])
+      eventsLoadedRef.current = true
+    } finally {
+      setLoadingEvents(false)
+    }
+  }, [])
+
   useEffect(() => {
     if (!user) {
       navigate('/login')
       return
     }
 
-    // Only load if we haven't loaded yet or if the user email changed
+    // Load profile and events on mount or when user email changes
     const userEmail = user?.email
-    if (userEmail && lastLoadedEmailRef.current !== userEmail) {
-      lastLoadedEmailRef.current = userEmail
-      loadProfile()
+    if (userEmail) {
+      // Load profile if email changed
+      if (lastLoadedEmailRef.current !== userEmail) {
+        lastLoadedEmailRef.current = userEmail
+        eventsLoadedRef.current = false // Reset events loaded flag when user changes
+        loadProfile()
+        // Load events when user changes
+        loadRegisteredEvents()
+      } else if (!eventsLoadedRef.current) {
+        // Load events on initial mount if not already loaded
+        loadRegisteredEvents()
+      }
     }
-  }, [user?.email, navigate, loadProfile])
+  }, [user?.email, navigate, loadProfile, loadRegisteredEvents])
+
+  // Listen for registration changes from other pages
+  useEffect(() => {
+    const handleRegistrationChange = () => {
+      console.log('Event registration changed, reloading registered events...')
+      loadRegisteredEvents()
+    }
+
+    // Listen for custom events when booking/canceling
+    window.addEventListener('eventRegistrationChanged', handleRegistrationChange)
+    
+    // Also refresh when the page becomes visible (user might have booked/canceled in another tab)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('Page became visible, reloading registered events...')
+        loadRegisteredEvents()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    // Also refresh when window gains focus (user switches back to this tab)
+    const handleFocus = () => {
+      console.log('Window gained focus, reloading registered events...')
+      loadRegisteredEvents()
+    }
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      window.removeEventListener('eventRegistrationChanged', handleRegistrationChange)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [loadRegisteredEvents])
 
   function handleToggleEventType(type: string) {
     setSelectedEventTypes(prev => ({
@@ -254,6 +324,85 @@ export default function Profile() {
             </button>
           </div>
         </form>
+
+        <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid #e5e7eb' }}>
+          <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--accent)' }}>
+            My Registered Events
+          </h3>
+          
+          {loadingEvents ? (
+            <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--muted)' }}>
+              Loading registered events...
+            </div>
+          ) : registeredEvents.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--muted)' }}>
+              You haven't registered for any events yet.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {registeredEvents.map((event) => {
+                const eventDate = event.date ? new Date(event.date) : null
+                const formattedDate = eventDate ? eventDate.toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                }) : 'Date TBD'
+                
+                return (
+                  <div
+                    key={event.id}
+                    style={{
+                      padding: '1rem',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      backgroundColor: 'var(--card)',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--accent)'
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--border)'
+                      e.currentTarget.style.boxShadow = 'none'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                      <div style={{ flex: 1 }}>
+                        <h4 style={{ 
+                          fontSize: '1.1rem', 
+                          fontWeight: '600', 
+                          marginBottom: '0.5rem',
+                          color: 'var(--text)'
+                        }}>
+                          {event.title}
+                        </h4>
+                        <p style={{ 
+                          fontSize: '0.9rem', 
+                          color: 'var(--muted)', 
+                          marginBottom: '0.5rem',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden'
+                        }}>
+                          {event.description}
+                        </p>
+                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.85rem', color: 'var(--muted)' }}>
+                          <span>📍 {event.location}</span>
+                          <span>📅 {formattedDate}</span>
+                          {event.price !== undefined && event.price !== null && (
+                            <span>💰 ${event.price.toFixed(2)}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
 
         <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid #e5e7eb' }}>
           <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--accent)' }}>

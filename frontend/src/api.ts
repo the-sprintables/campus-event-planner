@@ -680,3 +680,42 @@ export async function getEventRegistrationCount(eventId: string): Promise<{ ok: 
   }
 }
 
+export async function getUserRegisteredEvents(): Promise<{
+  ok: boolean;
+  events?: Event[];
+  error?: string;
+}> {
+  const token = getAuthToken();
+  if (!token) {
+    return { ok: false, error: "Not authenticated" };
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/registered-events`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await handleApiError(
+        response,
+        "Failed to fetch registered events"
+      );
+      return { ok: false, error: errorMessage };
+    }
+
+    const backendEvents: BackendEvent[] = await response.json();
+    // Handle null or undefined response
+    if (!backendEvents || !Array.isArray(backendEvents)) {
+      return { ok: true, events: [] };
+    }
+    const frontendEvents = backendEvents.map(backendToFrontendEvent);
+    return { ok: true, events: frontendEvents };
+  } catch (error) {
+    return { ok: false, error: handleNetworkError(error, "fetch registered events") };
+  }
+}
+

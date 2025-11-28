@@ -364,3 +364,37 @@ func GetRegistrationQuantity(eventID int64, userID int64) (int64, error) {
 
 	return quantity, nil
 }
+
+// GetUserRegisteredEvents returns all events that a user has registered for
+func GetUserRegisteredEvents(userID int64) ([]Event, error) {
+	query := `
+	SELECT e.id, e.name, e.description, e.location, e.dateTime, e.userID, e.imageData, e.color, e.price, e.event_type, e.priority, e.ticketsAvailable
+	FROM events e
+	INNER JOIN registrations r ON e.id = r.event_id
+	WHERE r.user_id = ?
+	ORDER BY e.dateTime ASC`
+	
+	rows, err := db.DB.Query(query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []Event
+	for rows.Next() {
+		var event Event
+		var imageData, color, priority, eventType sql.NullString
+		var price sql.NullFloat64
+		var dateTimeStr sql.NullString
+		
+		err := rows.Scan(&event.ID, &event.Name, &event.Description, &event.Location, &dateTimeStr, &event.UserID, &imageData, &color, &price, &eventType, &priority, &event.TicketsAvailable)
+		if err != nil {
+			return nil, err
+		}
+
+		scanEventFromRow(&event, dateTimeStr, imageData, color, priority, price, eventType)
+		events = append(events, event)
+	}
+	
+	return events, nil
+}
