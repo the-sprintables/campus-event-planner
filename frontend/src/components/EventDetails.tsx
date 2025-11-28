@@ -37,6 +37,8 @@ export default function EventDetails({ event, onRegistrationChange }: EventDetai
         const newRegistrationStatus = !isRegistered
         setIsRegistered(newRegistrationStatus)
         onRegistrationChange?.(event.id, newRegistrationStatus)
+        // Dispatch custom event to notify Profile page
+        window.dispatchEvent(new CustomEvent('eventRegistrationChanged'))
       } else {
         setRegistrationError(result.error || 'Registration failed')
       }

@@ -59,6 +59,9 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
         // Notify parent of successful booking with quantity
         onBookingSuccess(event.id, ticketQuantity)
         
+        // Dispatch custom event to notify Profile page and other components
+        window.dispatchEvent(new CustomEvent('eventRegistrationChanged'))
+        
         // Auto close after 3 seconds to give user time to see confirmation
         setTimeout(() => {
           setBookingSuccess(false)

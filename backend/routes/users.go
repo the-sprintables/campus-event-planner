@@ -166,3 +166,15 @@ func updateProfile(context *gin.Context) {
 		"preferredEventTypes": request.PreferredEventTypes,
 	})
 }
+
+func getRegisteredEvents(context *gin.Context) {
+	userId := context.GetInt64("userId")
+
+	events, err := models.GetUserRegisteredEvents(userId)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"message": "Could not fetch registered events"})
+		return
+	}
+
+	context.JSON(http.StatusOK, events)
+}
